@@ -84,7 +84,7 @@ fun IndependentRadialLayout(
 
         // 1. Measure Primary
         if (primaryMeasurable != null) {
-            val p = primaryMeasurable.measure(constraints)
+            val p = primaryMeasurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
             primaryPlaceable = p
             placeables.add(p)
             
@@ -109,7 +109,7 @@ fun IndependentRadialLayout(
 
         // 2. Measure Secondaries
         secondaryMeasurables.forEachIndexed { index, measurable ->
-            val p = measurable.measure(constraints)
+            val p = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
             placeables.add(p)
             
             val id = "${prefix}_secondary_$index"

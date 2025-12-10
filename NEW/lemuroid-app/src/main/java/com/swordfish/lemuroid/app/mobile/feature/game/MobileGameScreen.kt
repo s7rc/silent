@@ -188,14 +188,17 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                             }
     
                             // Pass Settings (which now include elements)
+                            // We use fillMaxSize() so that the Layouts share the same Full-Screen coordinate space (0..1)
+                            // as the Editor Overlay. This allows moving controls anywhere on screen.
+                            // Since IndependentRadialLayout is transparent where there are no buttons, this is safe.
                             leftGamePad?.invoke(
                                 this,
-                                Modifier.layoutId(GameScreenLayout.CONSTRAINTS_LEFT_PAD),
+                                Modifier.fillMaxSize(),
                                 touchControllerSettings,
                             )
                             rightGamePad?.invoke(
                                 this,
-                                Modifier.layoutId(GameScreenLayout.CONSTRAINTS_RIGHT_PAD),
+                                Modifier.fillMaxSize(),
                                 touchControllerSettings,
                             )
     
@@ -213,6 +216,13 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                                     modifier = Modifier.fillMaxSize(),
                                     settings = touchControllerSettings,
                                     onSettingsChanged = { viewModel.updateTouchControllerSettings(it) }
+                                )
+                                
+                                // Show the Edit Menu (Card) on top of the Overlay
+                                MenuEditTouchControls(
+                                    viewModel = viewModel,
+                                    controllerConfig = currentControllerConfig,
+                                    touchControllerSettings = touchControllerSettings,
                                 )
                             }
                         }
@@ -266,7 +276,6 @@ private fun GameScreenRunningCentralMenu(
             animationDurationMillis = MENU_LOADING_ANIMATION_MILLIS,
             icon = R.drawable.button_menu,
         )
-        MenuEditTouchControls(viewModel, controllerConfig, touchControllerSettings)
     }
 }
 
@@ -276,15 +285,28 @@ private fun MenuEditTouchControls(
     controllerConfig: ControllerConfig,
     touchControllerSettings: TouchControllerSettingsManager.Settings,
 ) {
-    val showEditControls = viewModel.isEditControlShown().collectAsState(false)
-    if (!showEditControls.value) return
-
-    Dialog(onDismissRequest = { viewModel.showEditControls(false) }) {
+    // No "visible" check here, caller handles it.
+    
+    // We place the menu at the bottom or center. 
+    // Since we want to see controls while editing, maybe Bottom?
+    // User interface shows it as a central dialog usually. 
+    // Let's keep it centered but maybe semi-transparent or compact?
+    // Existing UI was a Card.
+    
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize().pointerInput(Unit) { 
+            // Do NOT consume generic taps, let them fall through to editor overlay!
+            // But we don't want to accidentally click "reset" when trying to drag a button near it.
+            // Card will handle its own touches.
+        }
+    ) {
         Card(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(),
+                    .fillMaxWidth(0.8f) // Not full width
+                    .wrapContentHeight()
+                    .align(Alignment.Center), // Center it
         ) {
             Column(
                 modifier =
