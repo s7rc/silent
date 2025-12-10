@@ -26,15 +26,25 @@ interface LemuroidRadialScope {
     fun Modifier.radialScale(scale: Float): Modifier
 }
 
-private class IndependentSecondaryDialsScope : LemuroidRadialScope {
+private class IndependentSecondaryDialsScope(
+    private val prefix: String,
+    private val boundsMap: MutableMap<String, Rect>
+) : LemuroidRadialScope {
+    private var index = 0
+
     override fun Modifier.radialPosition(degrees: Float): Modifier {
-        return this.then(
-            object : androidx.compose.ui.layout.ParentDataModifier {
-                override fun androidx.compose.ui.unit.Density.modifyParentData(parentData: Any?): Any {
-                    return RadialParentData(degrees)
-                }
+        val currentId = "${prefix}_secondary_${index++}"
+        return this
+            .onGloballyPositioned {
+                boundsMap[currentId] = it.boundsInRoot()
             }
-        )
+            .then(
+                object : androidx.compose.ui.layout.ParentDataModifier {
+                    override fun androidx.compose.ui.unit.Density.modifyParentData(parentData: Any?): Any {
+                        return RadialParentData(degrees)
+                    }
+                }
+            )
     }
 
     override fun Modifier.radialScale(scale: Float): Modifier {
@@ -71,7 +81,7 @@ fun IndependentRadialLayout(
             }
 
             // Secondary Dials
-            val scope = IndependentSecondaryDialsScope()
+            val scope = IndependentSecondaryDialsScope(prefix, boundsMap)
             scope.secondaryDials()
         }
     ) { measurables, constraints ->
