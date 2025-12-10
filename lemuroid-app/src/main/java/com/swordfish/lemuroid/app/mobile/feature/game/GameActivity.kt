@@ -60,6 +60,7 @@ import com.swordfish.radialgamepad.library.haptics.HapticConfig
 import com.swordfish.touchinput.radial.LemuroidTouchConfigs
 import com.swordfish.touchinput.radial.LemuroidTouchOverlayThemes
 import com.swordfish.touchinput.radial.sensors.TiltSensor
+import com.swordfish.lemuroid.app.mobile.feature.game.TouchConfigSplitter
 import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -97,8 +98,7 @@ class GameActivity : BaseGameActivity() {
     private lateinit var tiltSensor: TiltSensor
     private var currentTiltTracker: TiltTracker? = null
 
-    private var leftPad: RadialGamePad? = null
-    private var rightPad: RadialGamePad? = null
+    private val touchPads = mutableMapOf<String, RadialGamePad>()
 
     private val touchControllerJobs = mutableSetOf<Job>()
 
@@ -211,7 +211,7 @@ class GameActivity : BaseGameActivity() {
         withContext(Dispatchers.Main) {
             setupTouchViews(controllerConfig, hapticFeedbackMode, orientation)
         }
-        loadTouchControllerSettings(controllerConfig, orientation)
+        loadTouchControllerSettings(controllerConfig, orientation, touchPads.keys)
     }
 
     private fun isTouchControllerVisible(): Flow<Boolean> {
@@ -234,13 +234,17 @@ class GameActivity : BaseGameActivity() {
         hapticFeedbackType: String,
         orientation: Int,
     ) {
-        touchControllerJobs
-            .forEach { it.cancel() }
-
+        touchControllerJobs.forEach { it.cancel() }
         touchControllerJobs.clear()
 
-        leftGamePadContainer.removeAllViews()
-        rightGamePadContainer.removeAllViews()
+        // Clear existing views from main container that we added (if any)
+        // Note: Ideally we should use a dedicated container. For now, we clear the pads we track.
+        touchPads.values.forEach { mainContainerLayout.removeView(it) }
+        touchPads.clear()
+        
+        // Hide legacy containers
+        leftGamePadContainer.isVisible = false
+        rightGamePadContainer.isVisible = false
 
         val touchControllerConfig = controllerConfig.getTouchControllerConfig()
 
@@ -252,36 +256,33 @@ class GameActivity : BaseGameActivity() {
                 else -> HapticConfig.OFF
             }
 
-        val theme = LemuroidTouchOverlayThemes.getGamePadTheme(leftGamePadContainer)
+        val theme = LemuroidTouchOverlayThemes.getGamePadTheme(mainContainerLayout)
 
-        val leftConfig =
-            LemuroidTouchConfigs.getRadialGamePadConfig(
-                touchControllerConfig.leftConfig,
-                hapticConfig,
-                theme,
-            )
-        val leftPad = RadialGamePad(leftConfig, DEFAULT_MARGINS_DP, this)
-        leftGamePadContainer.addView(leftPad)
+        val leftBaseConfig = LemuroidTouchConfigs.getRadialGamePadConfig(touchControllerConfig.leftConfig, hapticConfig, theme)
+        val rightBaseConfig = LemuroidTouchConfigs.getRadialGamePadConfig(touchControllerConfig.rightConfig, hapticConfig, theme)
 
-        val rightConfig =
-            LemuroidTouchConfigs.getRadialGamePadConfig(
-                touchControllerConfig.rightConfig,
-                hapticConfig,
-                theme,
-            )
-        val rightPad = RadialGamePad(rightConfig, DEFAULT_MARGINS_DP, this)
-        rightGamePadContainer.addView(rightPad)
+        val groups = TouchConfigSplitter.split(leftBaseConfig, "left") + 
+                     TouchConfigSplitter.split(rightBaseConfig, "right")
 
-        val touchControllerEvents =
-            merge(leftPad.events(), rightPad.events())
-                .shareIn(lifecycleScope, SharingStarted.Lazily)
+        val eventFlows = mutableListOf<Flow<Event>>()
+
+        groups.forEach { group ->
+            val pad = RadialGamePad(group.config, 0f, this) // 0f margin, we handle layout manually
+            pad.id = View.generateViewId()
+            // Store default offsets in tag or map for layout logic?
+            // We can store them in a map in LayoutHandler or effectively just use the ID.
+            pad.tag = group // Store the whole split group info
+            
+            mainContainerLayout.addView(pad)
+            touchPads[group.id] = pad
+            eventFlows.add(pad.events())
+        }
+
+        val touchControllerEvents = eventFlows.merge().shareIn(lifecycleScope, SharingStarted.Lazily)
 
         setupDefaultActions(touchControllerEvents)
         setupTiltActions(touchControllerEvents)
         setupTouchMenuActions(touchControllerEvents)
-
-        this.leftPad = leftPad
-        this.rightPad = rightPad
     }
 
     private fun setupDefaultActions(touchControllerEvents: Flow<Event>) {
@@ -505,14 +506,14 @@ class GameActivity : BaseGameActivity() {
         currentTiltTracker?.let {
             val xTilt = (sensorValues[0] + 1f) / 2f
             val yTilt = (sensorValues[1] + 1f) / 2f
-            it.updateTracking(xTilt, yTilt, sequenceOf(leftPad, rightPad).filterNotNull())
+            it.updateTracking(xTilt, yTilt, touchPads.values.asSequence())
         }
     }
 
     private fun stopTrackingId(trackedEvent: TiltTracker) {
         currentTiltTracker = null
         tiltSensor.shouldRun = false
-        trackedEvent.stopTracking(sequenceOf(leftPad, rightPad).filterNotNull())
+        trackedEvent.stopTracking(touchPads.values.asSequence())
     }
 
     private fun startTrackingId(trackedEvent: TiltTracker) {
@@ -525,7 +526,7 @@ class GameActivity : BaseGameActivity() {
     }
 
     private fun simulateTouchControllerHaptic() {
-        leftPad?.performHapticFeedback()
+        touchPads.values.firstOrNull()?.performHapticFeedback()
     }
 
     private suspend fun storeTouchControllerSettings(
@@ -540,9 +541,10 @@ class GameActivity : BaseGameActivity() {
     private suspend fun loadTouchControllerSettings(
         controllerConfig: ControllerConfig,
         orientation: Int,
+        elementIds: Set<String>
     ) {
         val settingsManager = getTouchControllerSettingsManager(controllerConfig, orientation)
-        touchControllerSettingsState.value = settingsManager.retrieveSettings()
+        touchControllerSettingsState.value = settingsManager.retrieveSettings(elementIds)
     }
 
     private fun getTouchControllerSettingsManager(
@@ -597,18 +599,15 @@ class GameActivity : BaseGameActivity() {
                 mainContainerLayout,
                 insets,
                 initialSettings,
+                touchPads
             )
                 .takeWhile { it !is TouchControllerCustomizer.Event.Close }
                 .scan(padSettings) { current, it ->
                     when (it) {
-                        is TouchControllerCustomizer.Event.Scale -> {
-                            current.copy(scale = it.value)
-                        }
-                        is TouchControllerCustomizer.Event.Rotation -> {
-                            current.copy(rotation = it.value)
-                        }
-                        is TouchControllerCustomizer.Event.Margins -> {
-                            current.copy(marginX = it.x, marginY = it.y)
+                        is TouchControllerCustomizer.Event.ElementChange -> {
+                            val newElements = current.elements.toMutableMap()
+                            newElements[it.id] = it.settings
+                            current.copy(elements = newElements)
                         }
                         else -> current
                     }
@@ -744,60 +743,138 @@ class GameActivity : BaseGameActivity() {
             insets: Rect,
         ) {
             val touchControllerConfig = controllerConfig.getTouchControllerConfig()
-
-            val leftPad = leftPad ?: return
-            val rightPad = rightPad ?: return
-
-            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
-                constraintSet.clear(R.id.leftgamepad, ConstraintSet.TOP)
-                constraintSet.clear(R.id.rightgamepad, ConstraintSet.TOP)
-            } else {
-                constraintSet.connect(
-                    R.id.leftgamepad,
-                    ConstraintSet.TOP,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.TOP,
-                )
-                constraintSet.connect(
-                    R.id.rightgamepad,
-                    ConstraintSet.TOP,
-                    ConstraintSet.PARENT_ID,
-                    ConstraintSet.TOP,
-                )
-            }
-
             val minScale = TouchControllerSettingsManager.MIN_SCALE
             val maxScale = TouchControllerSettingsManager.MAX_SCALE
 
-            val leftScale =
-                linearInterpolation(
-                    padSettings.scale,
-                    minScale,
-                    maxScale,
-                ) * touchControllerConfig.leftScale
+            // Calculate base scales from global setting (optional backing) or just 1.0
+            val globalScaleLerp = linearInterpolation(padSettings.scale, minScale, maxScale)
+            
+            val activePads = touchPads.toMap() // Copy to avoid concurrent mods if any
 
-            val rightScale =
-                linearInterpolation(
-                    padSettings.scale,
-                    minScale,
-                    maxScale,
-                ) * touchControllerConfig.rightScale
+            // Screen dimensions - we assume mainContainerLayout is laid out.
+            // If 0, we might need waiting. LayoutHandler is usually called during layout pass or after measure.
+            val width = mainContainerLayout.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+            val height = mainContainerLayout.height.takeIf { it > 0 } ?: resources.displayMetrics.heightPixels
+            
+            val safeWidth = width - insets.left - insets.right
+            val safeHeight = height - insets.top - insets.bottom
+            val leftOffset = insets.left
+            val topOffset = insets.top
 
-            val maxMargins =
-                GraphicsUtils.convertDpToPixel(
-                    TouchControllerSettingsManager.MAX_MARGINS,
-                    applicationContext,
-                )
+            activePads.forEach { (id, pad) ->
+                val group = pad.tag as? TouchConfigSplitter.SplitGroup
+                val elementSettings = padSettings.elements[id]
+                
+                // Scale
+                val eScale = elementSettings?.scale ?: 1.0f
+                // We combine global scale (legacy support) with element scale? 
+                // Or just use element scale. User said "independent".
+                // But keeping global scale influence might be nice for "Make Everything Bigger".
+                // Let's multiply them.
+                val finalScale = globalScaleLerp * eScale
+                
+                // Set scale on view
+                pad.scaleX = finalScale
+                pad.scaleY = finalScale
+                
+                // Position
+                val (defX, defY) = calculateDefaultPosition(id, safeWidth, safeHeight, orientation)
+                
+                // Settings X/Y are Normalized (0..1). If -1, use Default.
+                val setX = elementSettings?.x ?: -1f
+                val setY = elementSettings?.y ?: -1f
+                
+                val targetX = if (setX >= 0f) (setX * safeWidth) else defX
+                val targetY = if (setY >= 0f) (setY * safeHeight) else defY
+                
+                // Apply offsets from SplitGroup (e.g. slight shift for button vs stick)
+                // These are usually 0 based on my splitter analysis, but good to include.
+                val splitOffsetX = group?.defaultOffsetX ?: 0f
+                val splitOffsetY = group?.defaultOffsetY ?: 0f
 
-            constraintSet.setHorizontalWeight(R.id.leftgamepad, touchControllerConfig.leftScale)
-            constraintSet.setHorizontalWeight(R.id.rightgamepad, touchControllerConfig.rightScale)
+                // To center the view at targetX, subtract half width.
+                // But view width might be 0 if not measured yet.
+                // RadialGamePad usually measures to primaryDialMaxSizeDp + margins.
+                // We should ensure it has a size. 
+                // We can use estimated size or wait for layout.
+                // For now, let's assume we position the TOP-LEFT of the view, or CENTER?
+                // Standard game controls: Position usually refers to Center.
+                
+                // Since we can't easily know width before measure, we can use translation.
+                // pad.x sets left position.
+                // We want center.
+                // Let's use translationX/Y relative to (0,0) of container.
+                // And shift by -width/2 in onLayout? Or use Translation which is post-layout?
+                
+                // Using View.setX/Y sets Left/Top.
+                // If we want to set Center, we need Width.
+                // Hack: Set pivot to center (default) and just set position? No.
+                
+                // Let's set translation.
+                // If width is 0, this is wrong.
+                // We can use a OnLayoutChangeListener on the pad to correct centering?
+                // Or we can just set X/Y and refine later.
+                
+                // Ideally: targetX is the CENTER.
+                pad.x = leftOffset + targetX + splitOffsetX - (pad.width / 2f)
+                pad.y = topOffset + targetY + splitOffsetY - (pad.height / 2f)
+                
+                // Logic to update when width changes:
+                if (pad.width == 0) {
+                     pad.post { 
+                        pad.x = leftOffset + targetX + splitOffsetX - (pad.width / 2f)
+                        pad.y = topOffset + targetY + splitOffsetY - (pad.height / 2f)
+                     }
+                }
+            }
+        }
 
-            leftPad.primaryDialMaxSizeDp = DEFAULT_PRIMARY_DIAL_SIZE * leftScale
-            rightPad.primaryDialMaxSizeDp = DEFAULT_PRIMARY_DIAL_SIZE * rightScale
-
-            val baseVerticalMargin =
-                GraphicsUtils.convertDpToPixel(
-                    touchControllerConfig.verticalMarginDP,
+        private fun calculateDefaultPosition(id: String, w: Int, h: Int, orientation: Int): Pair<Float, Float> {
+            // Heuristic based on ID and Orientation (Portrait/Landscape)
+            // Portrait: Controls usually bottom half.
+            // Landscape: Controls on sides.
+            
+            val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
+            
+            // Normalize ID
+            val lowerId = id.lowercase()
+            
+            // Centers
+            val cx = w / 2f
+            val cy = h / 2f
+            
+            if (isPortrait) {
+                // Portrait Layout
+                return when {
+                    "dpad" in lowerId -> Pair(w * 0.25f, h * 0.65f) // Left-Bottomish
+                    "face" in lowerId -> Pair(w * 0.75f, h * 0.65f) // Right-Bottomish
+                    "start" in lowerId -> Pair(w * 0.60f, h * 0.85f)
+                    "select" in lowerId -> Pair(w * 0.40f, h * 0.85f)
+                    "menu" in lowerId -> Pair(w * 0.50f, h * 0.90f)
+                    "l" in lowerId || "l1" in lowerId -> Pair(w * 0.15f, h * 0.55f)
+                    "r" in lowerId || "r1" in lowerId -> Pair(w * 0.85f, h * 0.55f)
+                    "stick" in lowerId && "left" in lowerId -> Pair(w * 0.25f, h * 0.80f)
+                    "stick" in lowerId && "right" in lowerId -> Pair(w * 0.75f, h * 0.80f)
+                    else -> Pair(cx, cy)
+                }
+            } else {
+                // Landscape Layout
+                return when {
+                    "dpad" in lowerId -> Pair(w * 0.15f, h * 0.60f)
+                    "face" in lowerId -> Pair(w * 0.85f, h * 0.60f)
+                    "start" in lowerId -> Pair(w * 0.85f, h * 0.85f) // Bottom Right corner
+                    "select" in lowerId -> Pair(w * 0.15f, h * 0.85f) // Bottom Left corner
+                    "menu" in lowerId -> Pair(w * 0.50f, h * 0.10f) // Top Center
+                    "l" in lowerId || "l1" in lowerId -> Pair(w * 0.15f, h * 0.25f) // Top Left Shoulder
+                    "r" in lowerId || "r1" in lowerId -> Pair(w * 0.85f, h * 0.25f) // Top Right Shoulder
+                    "l2" in lowerId -> Pair(w * 0.15f, h * 0.15f) // Higher
+                    "r2" in lowerId -> Pair(w * 0.85f, h * 0.15f)
+                    "stick" in lowerId && "left" in lowerId -> Pair(w * 0.20f, h * 0.80f)
+                    "stick" in lowerId && "right" in lowerId -> Pair(w * 0.80f, h * 0.80f)
+                    else -> Pair(w * 0.5f, h * 0.8f) // Default center-bottom
+                }
+            }
+        }
                     applicationContext,
                 )
 
