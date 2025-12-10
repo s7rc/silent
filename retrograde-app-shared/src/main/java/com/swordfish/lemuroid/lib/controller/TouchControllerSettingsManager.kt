@@ -23,7 +23,6 @@ class TouchControllerSettingsManager(
         val scale: Float = DEFAULT_SCALE,
         val rotation: Float = DEFAULT_ROTATION,
         val marginX: Float = DEFAULT_MARGIN_X,
-        val marginX: Float = DEFAULT_MARGIN_X,
         val marginY: Float = DEFAULT_MARGIN_Y,
         val elements: Map<String, ElementSettings> = emptyMap(),
     )
@@ -70,7 +69,6 @@ class TouchControllerSettingsManager(
                     indexToFloat(
                         sharedPreferences.getInt(
                             getPreferenceString(R.string.pref_key_virtual_pad_margin_y, orientation),
-                            floatToIndex(DEFAULT_MARGIN_Y),
                             floatToIndex(DEFAULT_MARGIN_Y),
                         ),
                     ),
@@ -167,22 +165,6 @@ class TouchControllerSettingsManager(
         const val DEFAULT_MARGIN_X = 0.0f
         const val DEFAULT_MARGIN_Y = 0.0f
 
-        const val DEFAULT_ELEMENT_X = 0.5f // centered relative to container? No, probably 0 offset.
-        // Wait, offset logic: 0 = "Natural Position".
-        // Splitter returns "defaultOffsetX" which describes natural pos relative to center.
-        // Settings should describe *user delta* from natural pos?
-        // OR Settings describes absolute position (0..1)?
-        // If "Independent", user probably wants absolute control.
-        // BUT: Views are constrained by layout.
-        // Let's assume Settings stores OFFSET from the "default position" determined by Splitter?
-        // NO, simpler: Settings stores (x,y) as 0..1 normalized coords on screen?
-        // The RadialGamePad library handles internal layout. The View *container* (GameActivity) handles placement.
-        // I'll stick to: Settings stores Normalized Screen Coordinates (0.0 to 1.0).
-        // Default: If no setting, use Splitter's default (which I need to map to 0..1).
-        
-        // Actually, let's persist 0f as "Unset/Default" and handle default logic in GameActivity?
-        // Or store user's override.
-        // I found `floatToIndex` is used.
         // I'll use 0f as default for offset.
         
         const val DEFAULT_ELEMENT_SCALE = 1.0f 
