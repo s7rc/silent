@@ -2,6 +2,7 @@ package com.swordfish.lemuroid.app.mobile.feature.game
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,67 +42,80 @@ fun TouchControlsEditorOverlay(
         modifier = modifier
             .fillMaxSize()
             .pointerInput(Unit) {
+                // Track gesture accumulation to prevent stutter/lag
+                var initialElement: TouchControllerSettingsManager.ElementSettings? = null
+                var accumulatedPan = Offset.Zero
+                var accumulatedZoom = 1f
+
                 detectTransformGestures { centroid, pan, zoom, _ ->
                     // 1. Acquire Selection if needed
                     if (activeId == null) {
                         activeId = findIdAt(centroid)
+                        // Snapshot state on start
+                        if (activeId != null) {
+                            initialElement = currentSettings.elements[activeId]
+                            accumulatedPan = Offset.Zero
+                            accumulatedZoom = 1f
+                        }
                     }
                     val id = activeId ?: return@detectTransformGestures
+                    val startState = initialElement ?: return@detectTransformGestures
                     
-                    // 2. Get current state
-                    val safeSettings = currentSettings
-                    val currentElement = safeSettings.elements[id] ?: TouchControllerSettingsManager.ElementSettings()
-                    
-                    var changed = false
-                    var newScale = currentElement.scale
-                    var newX = currentElement.x
-                    var newY = currentElement.y
+                    // 2. Accumulate changes
+                    accumulatedPan += pan
+                    accumulatedZoom *= zoom
 
-                    // 3. Handle Zoom
-                    if (zoom != 1f) {
-                         newScale = (currentElement.scale * zoom).coerceIn(0.5f, 2.5f)
-                         changed = true
+                    var changed = false
+                    
+                    // 3. Calc Scale (Relative to Initial)
+                    val newScale = (startState.scale * accumulatedZoom).coerceIn(0.5f, 2.5f)
+                    if (newScale != startState.scale) changed = true
+                    
+                    // 4. Calc Position (Relative to Initial)
+                    var newX = startState.x
+                    var newY = startState.y
+                    
+                    val widthStr = size.width.toFloat()
+                    val heightStr = size.height.toFloat()
+                    
+                    if (widthStr > 0 && heightStr > 0) {
+                        // Current logic assumes startState.x is valid (0..1)
+                        // If -1, we need to resolve from bounds ONCE at start?
+                        // If startState.x < 0, we can't easily drag relatively without resolving center.
+                        // Handling uninitialized positions:
+                        if (startState.x < 0 || startState.y < 0) {
+                            val rect = boundsMap[id]
+                            if (rect != null) {
+                                // Update 'startState' to have resolved position so we can offset from it?
+                                // No, 'startState' is immutable.
+                                // We need a 'resolvedStartX' separate var.
+                                // Let's simplify: if x<0, try to resolve it now and use it as base.
+                                val resolvedX = rect.center.x / widthStr
+                                val resolvedY = rect.center.y / heightStr
+                                // Update our snapshot so future deltas work
+                                initialElement = startState.copy(x = resolvedX, y = resolvedY)
+                                // Next loop will use this. This frame might skip? No, retry calculation:
+                                newX = resolvedX + (accumulatedPan.x / widthStr)
+                                newY = resolvedY + (accumulatedPan.y / heightStr)
+                            }
+                        } else {
+                             // Normal case
+                             newX = startState.x + (accumulatedPan.x / widthStr)
+                             newY = startState.y + (accumulatedPan.y / heightStr)
+                        }
+                        
+                        newX = newX.coerceIn(0f, 1f)
+                        newY = newY.coerceIn(0f, 1f)
+                        changed = true
                     }
                     
-                    // 4. Handle Pan (Move)
-                    if (pan != Offset.Zero) {
-                         val widthStr = size.width.toFloat()
-                         val heightStr = size.height.toFloat()
-                         
-                         if (widthStr > 0 && heightStr > 0) {
-                            var startX = currentElement.x
-                            var startY = currentElement.y
-                            
-                            // Initialize position from bounds if not set
-                            if (startX < 0 || startY < 0) {
-                                val rect = boundsMap[id]
-                                if (rect != null) {
-                                    startX = (rect.center.x / widthStr)
-                                    startY = (rect.center.y / heightStr)
-                                }
-                            }
-                            
-                            if (startX >= 0 && startY >= 0) {
-                                val dx = pan.x / widthStr
-                                val dy = pan.y / heightStr
-                                // We use the *accumulated* position approach?
-                                // No, detectTransformGestures gives relative 'pan' delta.
-                                // So new = old + delta.
-                                // BUT 'old' is 'currentElement.x', which is state.
-                                // This works fine.
-                                
-                                newX = (startX + dx).coerceIn(0f, 1f)
-                                newY = (startY + dy).coerceIn(0f, 1f)
-                                changed = true
-                            }
-                         }
-                    }
-                    
+                    // 5. Apply
+                    // Note: We always apply "New Absolute" based on "Initial + Delta"
                     if (changed) {
-                        val newElement = currentElement.copy(x = newX, y = newY, scale = newScale)
-                        val newElements = safeSettings.elements.toMutableMap()
+                        val newElement = startState.copy(x = newX, y = newY, scale = newScale)
+                        val newElements = currentSettings.elements.toMutableMap()
                         newElements[id] = newElement
-                        onSettingsChanged(safeSettings.copy(elements = newElements))
+                        onSettingsChanged(currentSettings.copy(elements = newElements))
                     }
                 }
             }
@@ -114,6 +128,10 @@ fun TouchControlsEditorOverlay(
                       } while (event.changes.any { it.pressed })
                       activeId = null
                  }
+            }
+            .pointerInput(Unit) {
+                // Consume taps so they don't click the game buttons underneath
+                detectTapGestures { } 
             }
     ) {
         // Visuals for editor? Maybe draw boxes around detected elements?

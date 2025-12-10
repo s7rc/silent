@@ -83,14 +83,8 @@ fun IndependentRadialLayout(
         val positions = mutableListOf<Pair<Int, Int>>()
         var primaryPlaceable: Placeable? = null
 
-        // Constrain children to the dial size, causing them to wrap or fill the dial, not the screen
-        val maxChildSize = primaryDialMaxSize.roundToPx()
-        val childConstraints = Constraints(
-            minWidth = 0, 
-            minHeight = 0, 
-            maxWidth = maxChildSize, 
-            maxHeight = maxChildSize
-        )
+        // Use incoming constraints but relax minimums so children aren't forced to fill screen
+        val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
 
         // 1. Measure Primary
         if (primaryMeasurable != null) {
