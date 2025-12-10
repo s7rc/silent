@@ -66,157 +66,172 @@ import gg.padkit.inputstate.InputState
 
 @Composable
 fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isLandscape = constraints.maxWidth > constraints.maxHeight
-
-        LaunchedEffect(isLandscape) {
-            val orientation =
-                if (isLandscape) {
-                    TouchControllerSettingsManager.Orientation.LANDSCAPE
-                } else {
-                    TouchControllerSettingsManager.Orientation.PORTRAIT
+    // Shared Bounds Map for Independent Layouts & Editor
+    val boundsMap = remember { mutableMapOf<String, Rect>() }
+    CompositionLocalProvider(com.swordfish.touchinput.radial.layouts.LocalTouchElementBounds provides boundsMap) {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val isLandscape = constraints.maxWidth > constraints.maxHeight
+    
+            LaunchedEffect(isLandscape) {
+                val orientation =
+                    if (isLandscape) {
+                        TouchControllerSettingsManager.Orientation.LANDSCAPE
+                    } else {
+                        TouchControllerSettingsManager.Orientation.PORTRAIT
+                    }
+                viewModel.onScreenOrientationChanged(orientation)
+            }
+    
+            val controllerConfigState = viewModel.getTouchControllerConfig().collectAsState(null)
+            val touchControlsVisibleState = viewModel.isTouchControllerVisible().collectAsState(false)
+            val touchControllerSettingsState =
+                viewModel
+                    .getTouchControlsSettings(LocalDensity.current, WindowInsets.displayCutout)
+                    .collectAsState(null)
+    
+            val touchControllerSettings = touchControllerSettingsState.value
+            val currentControllerConfig = controllerConfigState.value
+    
+            val tiltConfiguration = viewModel.getTiltConfiguration().collectAsState(TiltConfiguration.Disabled)
+            val tiltSimulatedStates = viewModel.getSimulatedTiltEvents().collectAsState(InputState())
+            val tiltSimulatedControls = remember { derivedStateOf { tiltConfiguration.value.controlIds() } }
+    
+            val touchGamePads = currentControllerConfig?.getTouchControllerConfig()
+            val leftGamePad = touchGamePads?.leftComposable
+            val rightGamePad = touchGamePads?.rightComposable
+    
+            val hapticFeedbackMode =
+                viewModel
+                    .getTouchHapticFeedbackMode()
+                    .collectAsState(HapticFeedbackMode.NONE)
+    
+            val padHapticFeedback =
+                when (hapticFeedbackMode.value) {
+                    HapticFeedbackMode.NONE -> HapticFeedbackType.NONE
+                    HapticFeedbackMode.PRESS -> HapticFeedbackType.PRESS
+                    HapticFeedbackMode.PRESS_RELEASE -> HapticFeedbackType.PRESS_RELEASE
                 }
-            viewModel.onScreenOrientationChanged(orientation)
-        }
-
-        val controllerConfigState = viewModel.getTouchControllerConfig().collectAsState(null)
-        val touchControlsVisibleState = viewModel.isTouchControllerVisible().collectAsState(false)
-        val touchControllerSettingsState =
-            viewModel
-                .getTouchControlsSettings(LocalDensity.current, WindowInsets.displayCutout)
-                .collectAsState(null)
-
-        val touchControllerSettings = touchControllerSettingsState.value
-        val currentControllerConfig = controllerConfigState.value
-
-        val tiltConfiguration = viewModel.getTiltConfiguration().collectAsState(TiltConfiguration.Disabled)
-        val tiltSimulatedStates = viewModel.getSimulatedTiltEvents().collectAsState(InputState())
-        val tiltSimulatedControls = remember { derivedStateOf { tiltConfiguration.value.controlIds() } }
-
-        val touchGamePads = currentControllerConfig?.getTouchControllerConfig()
-        val leftGamePad = touchGamePads?.leftComposable
-        val rightGamePad = touchGamePads?.rightComposable
-
-        val hapticFeedbackMode =
-            viewModel
-                .getTouchHapticFeedbackMode()
-                .collectAsState(HapticFeedbackMode.NONE)
-
-        val padHapticFeedback =
-            when (hapticFeedbackMode.value) {
-                HapticFeedbackMode.NONE -> HapticFeedbackType.NONE
-                HapticFeedbackMode.PRESS -> HapticFeedbackType.PRESS
-                HapticFeedbackMode.PRESS_RELEASE -> HapticFeedbackType.PRESS_RELEASE
-            }
-
-        PadKit(
-            modifier = Modifier.fillMaxSize(),
-            onInputEvents = { viewModel.handleVirtualInputEvent(it) },
-            hapticFeedbackType = padHapticFeedback,
-            simulatedState = tiltSimulatedStates,
-            simulatedControlIds = tiltSimulatedControls,
-        ) {
-            val localContext = LocalContext.current
-            val lifecycle = LocalLifecycleOwner.current
-
-            val fullScreenPosition = remember { mutableStateOf<Rect?>(null) }
-            val viewportPosition = remember { mutableStateOf<Rect?>(null) }
-
-            AndroidView(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .onGloballyPositioned { fullScreenPosition.value = it.boundsInRoot() },
-                factory = {
-                    viewModel.createRetroView(localContext, lifecycle)
-                },
-            )
-
-            val fullPos = fullScreenPosition.value
-            val viewPos = viewportPosition.value
-
-            LaunchedEffect(fullPos, viewPos) {
-                val gameView = viewModel.retroGameView.retroGameViewFlow()
-                if (fullPos == null || viewPos == null) return@LaunchedEffect
-                val viewport =
-                    RectF(
-                        (viewPos.left - fullPos.left) / fullPos.width,
-                        (viewPos.top - fullPos.top) / fullPos.height,
-                        (viewPos.right - fullPos.left) / fullPos.width,
-                        (viewPos.bottom - fullPos.top) / fullPos.height,
-                    )
-                gameView.viewport = viewport
-            }
-
-            ConstraintLayout(
+    
+            PadKit(
                 modifier = Modifier.fillMaxSize(),
-                constraintSet =
-                    GameScreenLayout.buildConstraintSet(
-                        isLandscape,
-                        currentControllerConfig?.allowTouchOverlay ?: true,
-                    ),
+                onInputEvents = { viewModel.handleVirtualInputEvent(it) },
+                hapticFeedbackType = padHapticFeedback,
+                simulatedState = tiltSimulatedStates,
+                simulatedControlIds = tiltSimulatedControls,
             ) {
-                Box(
+                val localContext = LocalContext.current
+                val lifecycle = LocalLifecycleOwner.current
+    
+                val fullScreenPosition = remember { mutableStateOf<Rect?>(null) }
+                val viewportPosition = remember { mutableStateOf<Rect?>(null) }
+    
+                AndroidView(
                     modifier =
                         Modifier
-                            .layoutId(GameScreenLayout.CONSTRAINTS_GAME_VIEW)
-                            .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Top))
-                            .onGloballyPositioned { viewportPosition.value = it.boundsInRoot() },
+                            .fillMaxSize()
+                            .onGloballyPositioned { fullScreenPosition.value = it.boundsInRoot() },
+                    factory = {
+                        viewModel.createRetroView(localContext, lifecycle)
+                    },
                 )
-
-                val isVisible =
-                    touchControllerSettings != null &&
-                        currentControllerConfig != null &&
-                        touchControlsVisibleState.value
-
-                if (isVisible) {
-                    CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme()) {
-                        if (!isLandscape) {
-                            PadContainer(
-                                modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_BOTTOM_CONTAINER),
+    
+                val fullPos = fullScreenPosition.value
+                val viewPos = viewportPosition.value
+    
+                LaunchedEffect(fullPos, viewPos) {
+                    val gameView = viewModel.retroGameView.retroGameViewFlow()
+                    if (fullPos == null || viewPos == null) return@LaunchedEffect
+                    val viewport =
+                        RectF(
+                            (viewPos.left - fullPos.left) / fullPos.width,
+                            (viewPos.top - fullPos.top) / fullPos.height,
+                            (viewPos.right - fullPos.left) / fullPos.width,
+                            (viewPos.bottom - fullPos.top) / fullPos.height,
+                        )
+                    gameView.viewport = viewport
+                }
+    
+                ConstraintLayout(
+                    modifier = Modifier.fillMaxSize(),
+                    constraintSet =
+                        GameScreenLayout.buildConstraintSet(
+                            isLandscape,
+                            currentControllerConfig?.allowTouchOverlay ?: true,
+                        ),
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .layoutId(GameScreenLayout.CONSTRAINTS_GAME_VIEW)
+                                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Top))
+                                .onGloballyPositioned { viewportPosition.value = it.boundsInRoot() },
+                    )
+    
+                    val isVisible =
+                        touchControllerSettings != null &&
+                            currentControllerConfig != null &&
+                            touchControlsVisibleState.value
+    
+                    if (isVisible) {
+                        CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme()) {
+                            if (!isLandscape) {
+                                PadContainer(
+                                    modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_BOTTOM_CONTAINER),
+                                )
+                            } else if (!currentControllerConfig.allowTouchOverlay) {
+                                PadContainer(
+                                    modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_LEFT_CONTAINER),
+                                )
+                                PadContainer(
+                                    modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_RIGHT_CONTAINER),
+                                )
+                            }
+    
+                            // Pass Settings (which now include elements)
+                            leftGamePad?.invoke(
+                                this,
+                                Modifier.layoutId(GameScreenLayout.CONSTRAINTS_LEFT_PAD),
+                                touchControllerSettings,
                             )
-                        } else if (!currentControllerConfig.allowTouchOverlay) {
-                            PadContainer(
-                                modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_LEFT_CONTAINER),
+                            rightGamePad?.invoke(
+                                this,
+                                Modifier.layoutId(GameScreenLayout.CONSTRAINTS_RIGHT_PAD),
+                                touchControllerSettings,
                             )
-                            PadContainer(
-                                modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_RIGHT_CONTAINER),
+    
+                            GameScreenRunningCentralMenu(
+                                modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_GAME_CONTAINER),
+                                controllerConfig = currentControllerConfig,
+                                touchControllerSettings = touchControllerSettings,
+                                viewModel = viewModel,
                             )
+                            
+                            // Edit Mode Overlay
+                            val showEditControls = viewModel.isEditControlShown().collectAsState(false)
+                            if (showEditControls.value) {
+                                TouchControlsEditorOverlay(
+                                    modifier = Modifier.fillMaxSize(),
+                                    settings = touchControllerSettings,
+                                    onSettingsChanged = { viewModel.updateTouchControllerSettings(it) }
+                                )
+                            }
                         }
-
-                        leftGamePad?.invoke(
-                            this,
-                            Modifier.layoutId(GameScreenLayout.CONSTRAINTS_LEFT_PAD),
-                            touchControllerSettings,
-                        )
-                        rightGamePad?.invoke(
-                            this,
-                            Modifier.layoutId(GameScreenLayout.CONSTRAINTS_RIGHT_PAD),
-                            touchControllerSettings,
-                        )
-
-                        GameScreenRunningCentralMenu(
-                            modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_GAME_CONTAINER),
-                            controllerConfig = currentControllerConfig,
-                            touchControllerSettings = touchControllerSettings,
-                            viewModel = viewModel,
-                        )
                     }
                 }
             }
-        }
-
-        val isLoading =
-            viewModel.loadingState
-                .collectAsState(true)
-                .value
-
-        if (isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator()
+    
+            val isLoading =
+                viewModel.loadingState
+                    .collectAsState(true)
+                    .value
+    
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
     }

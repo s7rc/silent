@@ -1,0 +1,70 @@
+name: Build New Android Debug APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Fix missing submodules (Manual Clone for NEW)
+        run: |
+          cd NEW
+          # The settings.gradle.kts expects lemuroid-cores at ./lemuroid-cores relative to project root (NEW)
+          if [ ! -d "lemuroid-cores/bundled-cores" ]; then
+            echo "Submodule missing. Cloning LemuroidCores manually into NEW/lemuroid-cores..."
+            # Remove just in case of partial state
+            rm -rf lemuroid-cores
+            git clone https://github.com/Swordfish90/LemuroidCores.git lemuroid-cores
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant execute permission for gradlew
+        working-directory: ./NEW
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        working-directory: ./NEW
+        run: ./gradlew assembleFreeDynamicDebug
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-new
+          path: NEW/lemuroid-app/build/outputs/apk/freeDynamic/debug/*.apk
+
+      - name: Create Release
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-new-${{ github.run_number }}
+          name: Build New ${{ github.run_number }}
+          body: |
+            Automated build from commit ${{ github.sha }} (NEW version)
+            
+            **Branch:** ${{ github.ref_name }}
+            
+            Download APK to install.
+          files: NEW/lemuroid-app/build/outputs/apk/freeDynamic/debug/*.apk
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -30,7 +30,7 @@ fun BaseLayoutLeft(
             )
         }
 
-    LayoutRadial(
+    IndependentRadialLayout(
         modifier =
             modifier
                 .absolutePadding(
@@ -38,10 +38,12 @@ fun BaseLayoutLeft(
                     bottom = TouchControllerSettingsManager.MAX_MARGINS.dp * settings.marginY,
                 )
                 .padding(LocalLemuroidPadTheme.current.padding),
-        primaryDial = primaryDial,
-        secondaryDials = secondaryDials,
+        settings = settings,
         primaryDialMaxSize = 160.dp * interpolatedDialSize,
         secondaryDialsBaseRotationInDegrees = settings.rotation * TouchControllerSettingsManager.MAX_ROTATION,
+        isLeft = true,
+        primaryDial = primaryDial,
+        secondaryDials = secondaryDials,
     )
 }
 
@@ -53,7 +55,7 @@ fun BaseLayoutRight(
     primaryDial: @Composable () -> Unit,
     secondaryDials: @Composable LayoutRadialSecondaryDialsScope.() -> Unit,
 ) {
-    LayoutRadial(
+    IndependentRadialLayout(
         modifier =
             modifier
                 .absolutePadding(
@@ -61,8 +63,7 @@ fun BaseLayoutRight(
                     bottom = TouchControllerSettingsManager.MAX_MARGINS.dp * settings.marginY,
                 )
                 .padding(LocalLemuroidPadTheme.current.padding),
-        primaryDial = primaryDial,
-        secondaryDials = secondaryDials,
+        settings = settings,
         primaryDialMaxSize =
             160.dp *
                 lerp(
@@ -71,5 +72,8 @@ fun BaseLayoutRight(
                     settings.scale,
                 ),
         secondaryDialsBaseRotationInDegrees = -settings.rotation * TouchControllerSettingsManager.MAX_ROTATION,
+        isLeft = false,
+        primaryDial = primaryDial,
+        secondaryDials = secondaryDials,
     )
 }
