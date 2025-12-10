@@ -10,6 +10,7 @@ import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
@@ -82,9 +83,18 @@ fun IndependentRadialLayout(
         val positions = mutableListOf<Pair<Int, Int>>()
         var primaryPlaceable: Placeable? = null
 
+        // Constrain children to the dial size, causing them to wrap or fill the dial, not the screen
+        val maxChildSize = primaryDialMaxSize.roundToPx()
+        val childConstraints = Constraints(
+            minWidth = 0, 
+            minHeight = 0, 
+            maxWidth = maxChildSize, 
+            maxHeight = maxChildSize
+        )
+
         // 1. Measure Primary
         if (primaryMeasurable != null) {
-            val p = primaryMeasurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+            val p = primaryMeasurable.measure(childConstraints)
             primaryPlaceable = p
             placeables.add(p)
             
@@ -109,7 +119,7 @@ fun IndependentRadialLayout(
 
         // 2. Measure Secondaries
         secondaryMeasurables.forEachIndexed { index, measurable ->
-            val p = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+            val p = measurable.measure(childConstraints)
             placeables.add(p)
             
             val id = "${prefix}_secondary_$index"

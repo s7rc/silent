@@ -296,11 +296,7 @@ private fun MenuEditTouchControls(
     
     Box(
         contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize().pointerInput(Unit) { 
-            // Do NOT consume generic taps, let them fall through to editor overlay!
-            // But we don't want to accidentally click "reset" when trying to drag a button near it.
-            // Card will handle its own touches.
-        }
+        modifier = Modifier.fillMaxSize()
     ) {
         Card(
             modifier =
