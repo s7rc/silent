@@ -9,9 +9,9 @@ import com.swordfish.touchinput.radial.ui.LemuroidControlBackground
 import gg.padkit.PadKitScope
 import gg.padkit.controls.ControlButton
 import gg.padkit.ids.Id
-import gg.padkit.layouts.radial.secondarydials.LayoutRadialSecondaryDialsScope
+import com.swordfish.touchinput.radial.layouts.LemuroidRadialScope
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun LemuroidControlButton(
     modifier: Modifier = Modifier,

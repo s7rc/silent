@@ -13,7 +13,6 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
-import gg.padkit.layouts.radial.secondarydials.LayoutRadialSecondaryDialsScope
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -21,11 +20,16 @@ val LocalTouchElementBounds = compositionLocalOf { mutableMapOf<String, Rect>() 
 
 private data class RadialParentData(val degrees: Float)
 
-private class IndependentSecondaryDialsScope : LayoutRadialSecondaryDialsScope {
+interface LemuroidRadialScope {
+    fun Modifier.radialPosition(degrees: Float): Modifier
+    fun Modifier.radialScale(scale: Float): Modifier
+}
+
+private class IndependentSecondaryDialsScope : LemuroidRadialScope {
     override fun Modifier.radialPosition(degrees: Float): Modifier {
         return this.then(
             object : androidx.compose.ui.layout.ParentDataModifier {
-                override fun Density.modifyParentData(parentData: Any?): Any {
+                override fun androidx.compose.ui.unit.Density.modifyParentData(parentData: Any?): Any {
                     return RadialParentData(degrees)
                 }
             }
@@ -33,9 +37,6 @@ private class IndependentSecondaryDialsScope : LayoutRadialSecondaryDialsScope {
     }
 
     override fun Modifier.radialScale(scale: Float): Modifier {
-         // We can ignore radialScale for placement, or store it.
-         // Let's assume we just want position. 
-         // But maybe internal logic needs it? I'll store it if needed later.
          return this
     }
 }
@@ -48,7 +49,7 @@ fun IndependentRadialLayout(
     secondaryDialsBaseRotationInDegrees: Float,
     isLeft: Boolean,
     primaryDial: @Composable () -> Unit,
-    secondaryDials: @Composable LayoutRadialSecondaryDialsScope.() -> Unit,
+    secondaryDials: @Composable LemuroidRadialScope.() -> Unit,
 ) {
     val boundsMap = LocalTouchElementBounds.current
     val prefix = if (isLeft) "left" else "right"

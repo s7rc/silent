@@ -10,9 +10,9 @@ import com.swordfish.touchinput.radial.controls.LemuroidControlButton
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 import gg.padkit.PadKitScope
 import gg.padkit.ids.Id
-import gg.padkit.layouts.radial.secondarydials.LayoutRadialSecondaryDialsScope
+import com.swordfish.touchinput.radial.layouts.LemuroidRadialScope
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonSelect(position: Int = 0) {
     LemuroidControlButton(
@@ -22,7 +22,7 @@ fun SecondaryButtonSelect(position: Int = 0) {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonL1() {
     LemuroidControlButton(
@@ -32,7 +32,7 @@ fun SecondaryButtonL1() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonL2() {
     LemuroidControlButton(
@@ -42,7 +42,7 @@ fun SecondaryButtonL2() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonR1() {
     LemuroidControlButton(
@@ -52,7 +52,7 @@ fun SecondaryButtonR1() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonR2() {
     LemuroidControlButton(
@@ -62,7 +62,7 @@ fun SecondaryButtonR2() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonL() {
     LemuroidControlButton(
@@ -72,7 +72,7 @@ fun SecondaryButtonL() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonR() {
     LemuroidControlButton(
@@ -82,7 +82,7 @@ fun SecondaryButtonR() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonStart(position: Int = 0) {
     LemuroidControlButton(
@@ -92,7 +92,7 @@ fun SecondaryButtonStart(position: Int = 0) {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonMenu(settings: TouchControllerSettingsManager.Settings) {
     LemuroidControlButton(
@@ -102,7 +102,7 @@ fun SecondaryButtonMenu(settings: TouchControllerSettingsManager.Settings) {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonMenuPlaceholder(settings: TouchControllerSettingsManager.Settings) {
     Box(
@@ -113,7 +113,7 @@ fun SecondaryButtonMenuPlaceholder(settings: TouchControllerSettingsManager.Sett
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryAnalogLeft() {
     LemuroidControlAnalog(
@@ -126,7 +126,7 @@ fun SecondaryAnalogLeft() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryAnalogRight() {
     LemuroidControlAnalog(
@@ -139,7 +139,7 @@ fun SecondaryAnalogRight() {
     )
 }
 
-context(PadKitScope, LayoutRadialSecondaryDialsScope)
+context(PadKitScope, LemuroidRadialScope)
 @Composable
 fun SecondaryButtonCoin() {
     LemuroidControlButton(
