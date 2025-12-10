@@ -30,7 +30,7 @@ fun TouchControlsEditorOverlay(
     // We need to track the active selection across the gesture
     var activeId by remember { mutableStateOf<String?>(null) }
     
-    // Helper to find ID at point using LATEST bounds map
+    // HelperS to find ID at point using LATEST bounds map
     // Note: boundsMap is mutable, so we read it directly.
     fun findIdAt(offset: Offset): String? {
         return boundsMap.entries.firstOrNull { (_, rect) ->
