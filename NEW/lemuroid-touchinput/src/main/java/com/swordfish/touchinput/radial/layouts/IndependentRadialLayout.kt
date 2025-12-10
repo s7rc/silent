@@ -70,7 +70,7 @@ fun IndependentRadialLayout(
                 primaryDial()
             }
 
-            // Secondary Dials l
+            // Secondary Dials
             val scope = IndependentSecondaryDialsScope()
             scope.secondaryDials()
         }
@@ -83,8 +83,15 @@ fun IndependentRadialLayout(
         val positions = mutableListOf<Pair<Int, Int>>()
         var primaryPlaceable: Placeable? = null
 
-        // Use incoming constraints but relax minimums so children aren't forced to fill screen
-        val childConstraints = constraints.copy(minWidth = 0, minHeight = 0)
+        // FORCE-CAP the size. This prevents buttons from stretching to screen width (Stripe Bug).
+        // primaryDialMaxSize is the correct "Container Size" for these elements.
+        val maxChildSize = primaryDialMaxSize.roundToPx()
+        val childConstraints = Constraints(
+            minWidth = 0,
+            minHeight = 0,
+            maxWidth = maxChildSize,
+            maxHeight = maxChildSize
+        )
 
         // 1. Measure Primary
         if (primaryMeasurable != null) {
