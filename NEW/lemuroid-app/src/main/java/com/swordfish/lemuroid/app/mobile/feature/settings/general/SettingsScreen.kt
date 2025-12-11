@@ -49,7 +49,8 @@ fun SettingsScreen(
     LemuroidSettingsPage(modifier = modifier) {
         RomsSettings(
             state = state,
-            onChangeFolder = { viewModel.changeLocalStorageFolder() },
+            onAddFolder = { viewModel.addLocalStorageFolder() },
+            onRemoveFolder = { viewModel.removeLocalStorageFolder(it) },
             indexingInProgress = indexingInProgress,
             scanInProgress = scanInProgress,
         )

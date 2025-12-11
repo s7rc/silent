@@ -19,7 +19,7 @@ class SettingsViewModel(
     context: Context,
     private val settingsInteractor: SettingsInteractor,
     saveSyncManager: SaveSyncManager,
-    sharedPreferences: FlowSharedPreferences,
+    private val sharedPreferences: FlowSharedPreferences,
 ) : ViewModel() {
     class Factory(
         private val context: Context,
@@ -38,7 +38,7 @@ class SettingsViewModel(
     }
 
     data class State(
-        val currentDirectory: String = "",
+        val storageDirectories: Set<String> = emptySet(),
         val isSaveSyncSupported: Boolean = false,
     )
 
@@ -46,14 +46,35 @@ class SettingsViewModel(
 
     val directoryScanInProgress = PendingOperationsMonitor(context).isDirectoryScanInProgress()
 
+    private val legacyKey = context.getString(com.swordfish.lemuroid.lib.R.string.pref_key_extenral_folder)
+    private val collectionKey = context.getString(com.swordfish.lemuroid.lib.R.string.pref_key_external_folders)
+
     val uiState =
-        sharedPreferences.getString(context.getString(com.swordfish.lemuroid.lib.R.string.pref_key_extenral_folder))
+        sharedPreferences.getStringSet(collectionKey, emptySet())
             .asFlow()
             .flowOn(Dispatchers.IO)
-            .stateIn(viewModelScope, SharingStarted.Lazily, "")
+            .map { folders ->
+                if (folders.isEmpty()) {
+                    // Fallback to legacy key for display if set is empty
+                    val legacy = sharedPreferences.sharedPreferences.getString(legacyKey, null)
+                    if (legacy != null) setOf(legacy) else emptySet()
+                } else {
+                    folders
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
             .map { State(it, saveSyncManager.isSupported()) }
 
-    fun changeLocalStorageFolder() {
+    fun addLocalStorageFolder() {
         settingsInteractor.changeLocalStorageFolder()
+    }
+
+    fun removeLocalStorageFolder(uri: String) {
+        settingsInteractor.removeLocalStorageFolder(uri)
+    }
+    
+    // Kept for compatibility if used elsewhere, but effectively alias to add
+    fun changeLocalStorageFolder() {
+        addLocalStorageFolder()
     }
 }

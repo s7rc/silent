@@ -26,6 +26,12 @@
     <string name="settings_category_general">General</string>
     <string name="settings_category_input">Input</string>
     <string name="settings_category_misc">Miscellaneous</string>
+
+    <string name="add_directory">Add directory</string>
+    <string name="remove_directory">Remove directory</string>
+    <string name="remove_directory_confirmation">Are you sure you want to remove this directory from your library?</string>
+    <string name="tap_to_remove">Tap to remove</string>
+    <string name="remove">Remove</string>
     <string name="settings_title_enable_autosave">Autosave state</string>
     <string name="settings_description_enable_autosave">Save state when exiting via game menu</string>
     <string name="settings_title_enable_touch_feedback">Vibrate on touch</string>
