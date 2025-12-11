@@ -56,7 +56,7 @@ class TouchControllerSettingsManager(
                 opacity =
                     indexToFloat(
                         sharedPreferences.getInt(
-                            getPreferenceString(R.string.pref_key_virtual_pad_opacity, orientation),
+                            "virtual_pad_opacity_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_OPACITY),
                         ),
                     ),
@@ -96,7 +96,7 @@ class TouchControllerSettingsManager(
         withContext(Dispatchers.IO) {
             val editor = sharedPreferences.get().edit()
             editor.putInt(
-                getPreferenceString(R.string.pref_key_virtual_pad_opacity, orientation),
+                "virtual_pad_opacity_${controllerID}_${orientation.ordinal}",
                 floatToIndex(settings.opacity),
             )
             editor.putInt(
