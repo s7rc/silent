@@ -191,29 +191,72 @@ private fun GeneralSettings() {
 @Composable
 private fun RomsSettings(
     state: SettingsViewModel.State,
-    onChangeFolder: () -> Unit,
+    onAddFolder: () -> Unit,
+    onRemoveFolder: (String) -> Unit,
     indexingInProgress: Boolean,
     scanInProgress: Boolean,
 ) {
     val context = LocalContext.current
-
-    val currentDirectory = state.currentDirectory
     val emptyDirectory = stringResource(R.string.none)
 
-    val currentDirectoryName =
-        remember(state.currentDirectory) {
-            runCatching {
-                DocumentFile.fromTreeUri(context, Uri.parse(currentDirectory))?.name
-            }.getOrNull() ?: emptyDirectory
-        }
+    // State for removal confirmation
+    val (folderToRemove, setFolderToRemove) = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+
+    if (folderToRemove != null) {
+        AlertDialog(
+            onDismissRequest = { setFolderToRemove(null) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemoveFolder(folderToRemove)
+                    setFolderToRemove(null)
+                }) {
+                    Text(stringResource(id = R.string.remove))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { setFolderToRemove(null) }) {
+                    Text(stringResource(id = R.string.cancel))
+                }
+            },
+            title = { Text(stringResource(R.string.remove_directory)) },
+            text = { Text(stringResource(R.string.remove_directory_confirmation)) }
+        )
+    }
 
     LemuroidCardSettingsGroup(title = { Text(text = stringResource(id = R.string.roms)) }) {
+        // List Directories
+        if (state.storageDirectories.isNotEmpty()) {
+            state.storageDirectories.forEach { uriString ->
+                val directoryName = remember(uriString) {
+                    runCatching {
+                        DocumentFile.fromTreeUri(context, Uri.parse(uriString))?.name
+                    }.getOrNull() ?: uriString
+                }
+
+                LemuroidSettingsMenuLink(
+                    title = { Text(text = directoryName) },
+                    subtitle = { Text(text = stringResource(R.string.tap_to_remove)) },
+                    onClick = { setFolderToRemove(uriString) },
+                    enabled = !indexingInProgress
+                )
+            }
+        } else {
+            // Placeholder if empty
+            LemuroidSettingsMenuLink(
+                title = { Text(text = stringResource(id = R.string.directory)) },
+                subtitle = { Text(text = emptyDirectory) },
+                onClick = { },
+                enabled = false
+            )
+        }
+
+        // Add Button
         LemuroidSettingsMenuLink(
-            title = { Text(text = stringResource(id = R.string.directory)) },
-            subtitle = { Text(text = currentDirectoryName) },
-            onClick = { onChangeFolder() },
-            enabled = !indexingInProgress,
+            title = { Text(text = stringResource(id = R.string.add_directory)) },
+            onClick = { onAddFolder() },
+            enabled = !indexingInProgress
         )
+
         if (scanInProgress) {
             LemuroidSettingsMenuLink(
                 title = { Text(text = stringResource(id = R.string.stop)) },
