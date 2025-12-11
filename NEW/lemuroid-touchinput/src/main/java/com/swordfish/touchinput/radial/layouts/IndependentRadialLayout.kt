@@ -110,6 +110,11 @@ fun IndependentRadialLayout(
         )
 
         // 1. Measure Primary
+        // Local vars to share position with secondaries
+        var primaryX = 0
+        var primaryY = 0
+
+        // 1. Measure Primary
         if (primaryMeasurable != null) {
             val p = primaryMeasurable.measure(childConstraints)
             primaryPlaceable = p
@@ -119,19 +124,21 @@ fun IndependentRadialLayout(
             val id = "${prefix}_primary"
             val elementSettings = settings.elements[id]
             
-            val x: Int
-            val y: Int
-            
             if (elementSettings != null && elementSettings.x >= 0) {
                 // Absolute Override (0..1) relative to Container Size
-                x = (elementSettings.x * constraints.maxWidth).toInt() - p.width / 2
-                y = (elementSettings.y * constraints.maxHeight).toInt() - p.height / 2
+                primaryX = (elementSettings.x * constraints.maxWidth).toInt() - p.width / 2
+                primaryY = (elementSettings.y * constraints.maxHeight).toInt() - p.height / 2
             } else {
-                // Default: Bottom-Left (or Right) corner
-                x = 0
-                y = 0 
+                // SMART DEFAULTS (Fix for "Crammed Buttons")
+                // Left: 15% from left, 65% down
+                // Right: 85% from left, 65% down
+                val centerX = if (isLeft) (constraints.maxWidth * 0.15f) else (constraints.maxWidth * 0.85f)
+                val centerY = (constraints.maxHeight * 0.65f)
+                
+                primaryX = centerX.toInt() - p.width / 2
+                primaryY = centerY.toInt() - p.height / 2
             }
-            positions.add(x to y)
+            positions.add(primaryX to primaryY)
         }
 
         // 2. Measure Secondaries
@@ -148,21 +155,20 @@ fun IndependentRadialLayout(
                  x = (elementSettings.x * constraints.maxWidth).toInt() - p.width / 2
                  y = (elementSettings.y * constraints.maxHeight).toInt() - p.height / 2
             } else {
-                // Default Radial Logic
+                // Default Radial Logic -> Orbit the Primary Dial
                 val parentData = measurable.parentData as? RadialParentData
                 val degrees = parentData?.degrees ?: 0f
                 
-                val radiusPx = primaryDialMaxSize.toPx() * 0.8f // Heuristic
+                val radiusPx = primaryDialMaxSize.toPx() * 0.8f 
                 
                 val angleRad = Math.toRadians((secondaryDialsBaseRotationInDegrees + degrees).toDouble())
                 
-                val cx = (primaryPlaceable?.width ?: 0) / 2
-                val cy = (primaryPlaceable?.height ?: 0) / 2
+                // ANCHOR to the Primary's actual position
+                val cx = primaryX + (primaryPlaceable?.width ?: 0) / 2
+                val cy = primaryY + (primaryPlaceable?.height ?: 0) / 2
                 
                 x = cx + (radiusPx * cos(angleRad)).toInt() - p.width / 2
-                y = cy - (radiusPx * sin(angleRad)).toInt() - p.height / 2 // Compose Y is down
-                
-                // Note: sin/cos direction might need tuning.
+                y = cy - (radiusPx * sin(angleRad)).toInt() - p.height / 2 
             }
             positions.add(x to y)
         }
