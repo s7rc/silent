@@ -32,7 +32,7 @@ fun LemuroidControlAnalog(
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
-                ) { LemuroidControlBackground(Modifier.fillMaxSize(0.8f)) }
+                ) { LemuroidControlBackground(Modifier.fillMaxSize(1.0f)) }
             },
             foreground = {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize(0.5f)) {
