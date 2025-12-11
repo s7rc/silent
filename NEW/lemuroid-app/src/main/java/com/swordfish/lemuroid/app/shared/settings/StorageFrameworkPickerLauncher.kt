@@ -49,6 +49,7 @@ class StorageFrameworkPickerLauncher : RetrogradeActivity() {
     ) {
         super.onActivityResult(requestCode, resultCode, resultData)
 
+        if (requestCode == REQUEST_CODE_PICK_FOLDER && resultCode == Activity.RESULT_OK) {
             val sharedPreferences = SharedPreferencesHelper.getLegacySharedPreferences(this)
             val legacyKey = getString(com.swordfish.lemuroid.lib.R.string.pref_key_extenral_folder)
             val collectionKey = getString(com.swordfish.lemuroid.lib.R.string.pref_key_external_folders)
