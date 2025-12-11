@@ -36,7 +36,7 @@ private class IndependentSecondaryDialsScope(
 
     override fun Modifier.radialPosition(degrees: Float): Modifier {
         val currentId = "${prefix}_secondary_${index++}"
-        val elementScale = settings.elements[currentId]?.scale ?: 1f
+        val elementScale = settings.elements[currentId]?.scale ?: 0.5f
         
         return this
             .onGloballyPositioned {
@@ -81,7 +81,7 @@ fun IndependentRadialLayout(
                         val id = "${prefix}_primary"
                         boundsMap[id] = it.boundsInRoot()
                     }
-                    .scale(settings.elements["${prefix}_primary"]?.scale ?: 1f)
+                    .scale(settings.elements["${prefix}_primary"]?.scale ?: 0.5f)
             ) {
                 primaryDial()
             }
