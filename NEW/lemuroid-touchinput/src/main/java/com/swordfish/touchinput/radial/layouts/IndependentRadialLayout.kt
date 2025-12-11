@@ -29,12 +29,15 @@ interface LemuroidRadialScope {
 
 private class IndependentSecondaryDialsScope(
     private val prefix: String,
-    private val boundsMap: MutableMap<String, Rect>
+    private val boundsMap: MutableMap<String, Rect>,
+    private val settings: TouchControllerSettingsManager.Settings
 ) : LemuroidRadialScope {
     private var index = 0
 
     override fun Modifier.radialPosition(degrees: Float): Modifier {
         val currentId = "${prefix}_secondary_${index++}"
+        val elementScale = settings.elements[currentId]?.scale ?: 1f
+        
         return this
             .onGloballyPositioned {
                 boundsMap[currentId] = it.boundsInRoot()
@@ -46,6 +49,7 @@ private class IndependentSecondaryDialsScope(
                     }
                 }
             )
+            .scale(elementScale)
     }
 
     override fun Modifier.radialScale(scale: Float): Modifier {
@@ -77,12 +81,13 @@ fun IndependentRadialLayout(
                         val id = "${prefix}_primary"
                         boundsMap[id] = it.boundsInRoot()
                     }
+                    .scale(settings.elements["${prefix}_primary"]?.scale ?: 1f)
             ) {
                 primaryDial()
             }
 
             // Secondary Dials
-            val scope = IndependentSecondaryDialsScope(prefix, boundsMap)
+            val scope = IndependentSecondaryDialsScope(prefix, boundsMap, settings)
             scope.secondaryDials()
         }
     ) { measurables, constraints ->
