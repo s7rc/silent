@@ -13,6 +13,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.scale
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 import kotlin.math.cos
 import kotlin.math.sin
@@ -48,7 +49,7 @@ private class IndependentSecondaryDialsScope(
     }
 
     override fun Modifier.radialScale(scale: Float): Modifier {
-         return this.androidx.compose.ui.draw.scale(scale)
+         return this.scale(scale)
     }
 }
 
