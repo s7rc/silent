@@ -60,16 +60,21 @@ fun TouchControlsEditorOverlay(
                             
                             // 2. Hit Test immediately
                             val down = changes.first { it.pressed } // Take the first pressed pointer
-                            // Always consume to BLOCK GAME INPUT regardless of hit
-                            changes.forEach { it.consume() }
-
+                            
+                            // Always consume to BLOCK GAME INPUT regardless of hit.
+                            // However, we consume AFTER logic in the loop below to allow calculation.
+                            // But here (initial contact), we want to consume to claim ownership?
+                            // No, if we consume here, the loop below sees consumed events.
+                            
+                            // Strategy: We loop until lift. IN the loop, we calc then consume.
+                            
                             // 3. Coordinate Logic
                             val globalTouch = down.position + overlayOffset
                             var currentActiveId = findIdAt(globalTouch)
                             
+                            // Fuzzy Search (Easier Grabbing)
                             if (currentActiveId == null) {
                                 currentActiveId = boundsMap.entries.firstOrNull { (_, rect) ->
-                                    // Increased tolerance to 150f (~50dp) to make grabbing easier
                                     rect.inflate(150f).contains(globalTouch)
                                 }?.key
                             }
@@ -78,91 +83,78 @@ fun TouchControlsEditorOverlay(
                             
                             // 4. Drag / Scale Loop
                             // We stay in this loop until all fingers lift.
-                            // We use Initial pass everywhere to maintain blockade.
-                            if (currentActiveId != null) {
-                                
-                                var initialElement: TouchControllerSettingsManager.ElementSettings? = currentSettings.elements[currentActiveId]
+                            val startState = if (currentActiveId != null) currentSettings.elements[currentActiveId] else null
+                            
+                            if (currentActiveId != null && startState != null) {
                                 var accumulatedPan = Offset.Zero
                                 var accumulatedZoom = 1f
                                 
-                                val startState = initialElement
-                                
-                                if (startState != null) {
-                                    while (true) {
-                                        val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                                    while (true) {
-                                        val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                                        
-                                        // Check if we finished
-                                        if (dragEvent.changes.all { !it.pressed }) {
-                                            break
-                                        }
-
-                                        // 1. Calculate Delta FIRST (while event is unconsumed)
-                                        val zoomChange = dragEvent.calculateZoom()
-                                        val panChange = dragEvent.calculatePan()
-                                        
-                                        // 2. CONSUME EVERYTHING (to block game)
-                                        dragEvent.changes.forEach { it.consume() }
-                                        
-                                        accumulatedZoom *= zoomChange
-                                        accumulatedPan += panChange
-                                        
-                                        var changed = false
-                                        val newScale = (startState.scale * accumulatedZoom).coerceIn(0.5f, 2.5f)
-                                        if (newScale != startState.scale) changed = true
-                                        
-                                        var newX = startState.x
-                                        var newY = startState.y
-                                        
-                                        val widthStr = size.width.toFloat()
-                                        val heightStr = size.height.toFloat()
-                                        
-                                        if (widthStr > 0 && heightStr > 0) {
-                                            if (startState.x < 0 || startState.y < 0) {
-                                                val rect = boundsMap[currentActiveId]
-                                                if (rect != null) {
-                                                    val localCenter = rect.center - overlayOffset
-                                                    val resolvedX = localCenter.x / widthStr
-                                                    val resolvedY = localCenter.y / heightStr
-                                                    
-                                                    // Re-base start state ?? No, startState is constant.
-                                                    // We need to bake the resolved base into the calc.
-                                                    
-                                                    // This logic was slightly fragile in previous loop.
-                                                    // Simpler: Just track absolute value from resolved base.
-                                                    
-                                                    newX = resolvedX + (accumulatedPan.x / widthStr)
-                                                    newY = resolvedY + (accumulatedPan.y / heightStr)
-                                                }
-                                            } else {
-                                                 newX = startState.x + (accumulatedPan.x / widthStr)
-                                                 newY = startState.y + (accumulatedPan.y / heightStr)
-                                            }
-                                            
-                                            newX = newX.coerceIn(0f, 1f)
-                                            newY = newY.coerceIn(0f, 1f)
-                                            changed = true
-                                        }
-                                        
-                                        if (changed) {
-                                            val newElement = startState.copy(x = newX, y = newY, scale = newScale)
-                                            val newElements = currentSettings.elements.toMutableMap()
-                                            newElements[currentActiveId!!] = newElement
-                                            onSettingsChanged(currentSettings.copy(elements = newElements))
-                                        }
+                                while (true) {
+                                    val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                    
+                                    // Check if we finished (all fingers up)
+                                    if (dragEvent.changes.all { !it.pressed }) {
+                                        break
                                     }
-                                } else {
-                                     // Found ID but no settings? Just block loop.
-                                     while (awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial).changes.any { it.pressed }) {
-                                         // drain
-                                     }
+
+                                    // A. Calculate Delta FIRST (Use unconsumed events)
+                                    val zoomChange = dragEvent.calculateZoom()
+                                    val panChange = dragEvent.calculatePan() // This requires unconsumed events
+                                    
+                                    // B. CONSUME EVERYTHING IMMEDIATELY AFTER CALC
+                                    // This prevents the game from seeing the move.
+                                    dragEvent.changes.forEach { it.consume() }
+                                    
+                                    accumulatedZoom *= zoomChange
+                                    accumulatedPan += panChange
+                                    
+                                    var changed = false
+                                    val newScale = (startState.scale * accumulatedZoom).coerceIn(0.5f, 2.5f)
+                                    if (newScale != startState.scale) changed = true
+                                    
+                                    var newX = startState.x
+                                    var newY = startState.y
+                                    
+                                    val widthStr = size.width.toFloat()
+                                    val heightStr = size.height.toFloat()
+                                    
+                                    if (widthStr > 0 && heightStr > 0) {
+                                        if (startState.x < 0 || startState.y < 0) {
+                                            val rect = boundsMap[currentActiveId]
+                                            if (rect != null) {
+                                                val localCenter = rect.center - overlayOffset
+                                                val resolvedX = localCenter.x / widthStr
+                                                val resolvedY = localCenter.y / heightStr
+                                                
+                                                newX = resolvedX + (accumulatedPan.x / widthStr)
+                                                newY = resolvedY + (accumulatedPan.y / heightStr)
+                                            }
+                                        } else {
+                                             newX = startState.x + (accumulatedPan.x / widthStr)
+                                             newY = startState.y + (accumulatedPan.y / heightStr)
+                                        }
+                                        
+                                        newX = newX.coerceIn(0f, 1f)
+                                        newY = newY.coerceIn(0f, 1f)
+                                        changed = true
+                                    }
+                                    
+                                    if (changed) {
+                                        val newElement = startState.copy(x = newX, y = newY, scale = newScale)
+                                        val newElements = currentSettings.elements.toMutableMap()
+                                        newElements[currentActiveId!!] = newElement
+                                        onSettingsChanged(currentSettings.copy(elements = newElements))
+                                    }
                                 }
                             } else {
-                                // missed hit: just block interactions until lift
-                                 while (awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial).changes.any { it.pressed }) {
-                                     // drain
-                                 }
+                                // Missed hit or no settings: Just block interaction until lift.
+                                while (true) {
+                                     val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                     dragEvent.changes.forEach { it.consume() } // Block Game
+                                     if (dragEvent.changes.all { !it.pressed }) {
+                                         break
+                                     }
+                                }
                             }
                             
                             activeId = null
