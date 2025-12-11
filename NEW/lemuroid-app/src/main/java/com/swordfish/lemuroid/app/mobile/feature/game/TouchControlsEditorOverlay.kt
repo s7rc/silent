@@ -69,7 +69,8 @@ fun TouchControlsEditorOverlay(
                             
                             if (currentActiveId == null) {
                                 currentActiveId = boundsMap.entries.firstOrNull { (_, rect) ->
-                                    rect.inflate(50f).contains(globalTouch)
+                                    // Increased tolerance to 150f (~50dp) to make grabbing easier
+                                    rect.inflate(150f).contains(globalTouch)
                                 }?.key
                             }
                             

@@ -113,121 +113,123 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                     HapticFeedbackMode.PRESS_RELEASE -> HapticFeedbackType.PRESS_RELEASE
                 }
     
-            PadKit(
-                modifier = Modifier.fillMaxSize(),
-                onInputEvents = { viewModel.handleVirtualInputEvent(it) },
-                hapticFeedbackType = padHapticFeedback,
-                simulatedState = tiltSimulatedStates,
-                simulatedControlIds = tiltSimulatedControls,
-            ) {
-                val localContext = LocalContext.current
-                val lifecycle = LocalLifecycleOwner.current
-    
-                val fullScreenPosition = remember { mutableStateOf<Rect?>(null) }
-                val viewportPosition = remember { mutableStateOf<Rect?>(null) }
-    
-                AndroidView(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .onGloballyPositioned { fullScreenPosition.value = it.boundsInRoot() },
-                    factory = {
-                        viewModel.createRetroView(localContext, lifecycle)
-                    },
-                )
-    
-                val fullPos = fullScreenPosition.value
-                val viewPos = viewportPosition.value
-    
-                LaunchedEffect(fullPos, viewPos) {
-                    val gameView = viewModel.retroGameView.retroGameViewFlow()
-                    if (fullPos == null || viewPos == null) return@LaunchedEffect
-                    val viewport =
-                        RectF(
-                            (viewPos.left - fullPos.left) / fullPos.width,
-                            (viewPos.top - fullPos.top) / fullPos.height,
-                            (viewPos.right - fullPos.left) / fullPos.width,
-                            (viewPos.bottom - fullPos.top) / fullPos.height,
-                        )
-                    gameView.viewport = viewport
-                }
-    
-                ConstraintLayout(
+            Box(modifier = Modifier.fillMaxSize()) {
+                PadKit(
                     modifier = Modifier.fillMaxSize(),
-                    constraintSet =
-                        GameScreenLayout.buildConstraintSet(
-                            isLandscape,
-                            currentControllerConfig?.allowTouchOverlay ?: true,
-                        ),
+                    onInputEvents = { viewModel.handleVirtualInputEvent(it) },
+                    hapticFeedbackType = padHapticFeedback,
+                    simulatedState = tiltSimulatedStates,
+                    simulatedControlIds = tiltSimulatedControls,
                 ) {
-                    Box(
+                    val localContext = LocalContext.current
+                    val lifecycle = LocalLifecycleOwner.current
+
+                    val fullScreenPosition = remember { mutableStateOf<Rect?>(null) }
+                    val viewportPosition = remember { mutableStateOf<Rect?>(null) }
+
+                    AndroidView(
                         modifier =
                             Modifier
-                                .layoutId(GameScreenLayout.CONSTRAINTS_GAME_VIEW)
-                                .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Top))
-                                .onGloballyPositioned { viewportPosition.value = it.boundsInRoot() },
+                                .fillMaxSize()
+                                .onGloballyPositioned { fullScreenPosition.value = it.boundsInRoot() },
+                        factory = {
+                            viewModel.createRetroView(localContext, lifecycle)
+                        },
                     )
-    
-                    val isVisible =
-                        touchControllerSettings != null &&
-                            currentControllerConfig != null &&
-                            touchControlsVisibleState.value
-    
-                    if (isVisible) {
-                        CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme()) {
-                            if (!isLandscape) {
-                                PadContainer(
-                                    modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_BOTTOM_CONTAINER),
-                                )
-                            } else if (!currentControllerConfig.allowTouchOverlay) {
-                                PadContainer(
-                                    modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_LEFT_CONTAINER),
-                                )
-                                PadContainer(
-                                    modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_RIGHT_CONTAINER),
-                                )
-                            }
-    
-                            // Pass Settings (which now include elements)
-                            // We use fillMaxSize() so that the Layouts share the same Full-Screen coordinate space (0..1)
-                            // as the Editor Overlay. This allows moving controls anywhere on screen.
-                            // Since IndependentRadialLayout is transparent where there are no buttons, this is safe.
-                            leftGamePad?.invoke(
-                                this,
-                                Modifier.fillMaxSize(),
-                                touchControllerSettings,
+
+                    val fullPos = fullScreenPosition.value
+                    val viewPos = viewportPosition.value
+
+                    LaunchedEffect(fullPos, viewPos) {
+                        val gameView = viewModel.retroGameView.retroGameViewFlow()
+                        if (fullPos == null || viewPos == null) return@LaunchedEffect
+                        val viewport =
+                            RectF(
+                                (viewPos.left - fullPos.left) / fullPos.width,
+                                (viewPos.top - fullPos.top) / fullPos.height,
+                                (viewPos.right - fullPos.left) / fullPos.width,
+                                (viewPos.bottom - fullPos.top) / fullPos.height,
                             )
-                            rightGamePad?.invoke(
-                                this,
-                                Modifier.fillMaxSize(),
-                                touchControllerSettings,
-                            )
-    
-                            GameScreenRunningCentralMenu(
-                                modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_GAME_CONTAINER),
-                                controllerConfig = currentControllerConfig,
-                                touchControllerSettings = touchControllerSettings,
-                                viewModel = viewModel,
-                            )
-                            
-                            // Edit Mode Overlay
-                            val showEditControls = viewModel.isEditControlShown().collectAsState(false)
-                            if (showEditControls.value) {
-                                TouchControlsEditorOverlay(
-                                    modifier = Modifier.fillMaxSize(),
-                                    settings = touchControllerSettings,
-                                    onSettingsChanged = { viewModel.updateTouchControllerSettings(it) }
+                        gameView.viewport = viewport
+                    }
+
+                    ConstraintLayout(
+                        modifier = Modifier.fillMaxSize(),
+                        constraintSet =
+                            GameScreenLayout.buildConstraintSet(
+                                isLandscape,
+                                currentControllerConfig?.allowTouchOverlay ?: true,
+                            ),
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .layoutId(GameScreenLayout.CONSTRAINTS_GAME_VIEW)
+                                    .windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Top))
+                                    .onGloballyPositioned { viewportPosition.value = it.boundsInRoot() },
+                        )
+
+                        val isVisible =
+                            touchControllerSettings != null &&
+                                currentControllerConfig != null &&
+                                touchControlsVisibleState.value
+
+                        if (isVisible) {
+                            CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme()) {
+                                if (!isLandscape) {
+                                    PadContainer(
+                                        modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_BOTTOM_CONTAINER),
+                                    )
+                                } else if (!currentControllerConfig.allowTouchOverlay) {
+                                    PadContainer(
+                                        modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_LEFT_CONTAINER),
+                                    )
+                                    PadContainer(
+                                        modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_RIGHT_CONTAINER),
+                                    )
+                                }
+
+                                // Pass Settings (which now include elements)
+                                // We use fillMaxSize() so that the Layouts share the same Full-Screen coordinate space (0..1)
+                                // as the Editor Overlay. This allows moving controls anywhere on screen.
+                                // Since IndependentRadialLayout is transparent where there are no buttons, this is safe.
+                                leftGamePad?.invoke(
+                                    this,
+                                    Modifier.fillMaxSize(),
+                                    touchControllerSettings,
                                 )
-                                
-                                // Show the Edit Menu (Card) on top of the Overlay
-                                MenuEditTouchControls(
-                                    viewModel = viewModel,
+                                rightGamePad?.invoke(
+                                    this,
+                                    Modifier.fillMaxSize(),
+                                    touchControllerSettings,
+                                )
+
+                                GameScreenRunningCentralMenu(
+                                    modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_GAME_CONTAINER),
                                     controllerConfig = currentControllerConfig,
                                     touchControllerSettings = touchControllerSettings,
+                                    viewModel = viewModel,
                                 )
                             }
                         }
                     }
+                }
+
+                // SIBLING: Editor Overlay (Rendered ON TOP of PadKit)
+                // This ensures PadKit cannot intercept or steal input from the editor.
+                val showEditControls = viewModel.isEditControlShown().collectAsState(false)
+                if (showEditControls.value && touchControllerSettings != null && currentControllerConfig != null) {
+                    TouchControlsEditorOverlay(
+                        modifier = Modifier.fillMaxSize(),
+                        settings = touchControllerSettings,
+                        onSettingsChanged = { viewModel.updateTouchControllerSettings(it) }
+                    )
+                    
+                    MenuEditTouchControls(
+                        viewModel = viewModel,
+                        controllerConfig = currentControllerConfig,
+                        touchControllerSettings = touchControllerSettings,
+                    )
                 }
             }
     
