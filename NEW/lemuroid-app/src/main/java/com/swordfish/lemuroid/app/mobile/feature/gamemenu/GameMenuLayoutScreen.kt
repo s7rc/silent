@@ -33,6 +33,7 @@ fun GameMenuLayoutScreen(
         Text("No touch settings available.")
         return
     }
+    val settings = touchSettings
 
     // Local mutable state for the slider
     // We send updates immediately on change or just on unmount?
@@ -42,8 +43,8 @@ fun GameMenuLayoutScreen(
     // User expects "Live" preview? No, the game is covered by the menu.
     // So distinct updates are fine.
     
-    val currentScale = remember { mutableStateOf(touchSettings.scale) }
-    val currentOpacity = remember { mutableStateOf(touchSettings.opacity) }
+    val currentScale = remember { mutableStateOf(settings.scale) }
+    val currentOpacity = remember { mutableStateOf(settings.opacity) }
 
     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
         
@@ -80,7 +81,7 @@ fun GameMenuLayoutScreen(
         LemuroidSettingsMenuLink(
             title = { Text(text = stringResource(id = R.string.touch_customize_button_done)) },
             onClick = {
-                val newSettings = touchSettings.copy(scale = currentScale.value, opacity = currentOpacity.value)
+                val newSettings = settings.copy(scale = currentScale.value, opacity = currentOpacity.value)
                 onResult {
                      putExtra(GameMenuContract.RESULT_UPDATE_TOUCH_SETTINGS, newSettings)
                 }
