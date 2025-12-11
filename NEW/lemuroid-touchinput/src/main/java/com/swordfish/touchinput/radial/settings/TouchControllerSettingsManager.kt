@@ -25,6 +25,7 @@ class TouchControllerSettingsManager(private val sharedPreferences: SharedPrefer
 
     @Serializable
     data class Settings(
+        val opacity: Float = DEFAULT_OPACITY,
         val scale: Float = DEFAULT_SCALE,
         val rotation: Float = DEFAULT_ROTATION,
         val marginX: Float = DEFAULT_MARGIN_X,
@@ -127,6 +128,7 @@ class TouchControllerSettingsManager(private val sharedPreferences: SharedPrefer
     }
 
     companion object {
+        const val DEFAULT_OPACITY = 1.0f
         const val DEFAULT_SCALE = 0.5f
         const val DEFAULT_ROTATION = 0.0f
         const val DEFAULT_MARGIN_X = 0.0f
