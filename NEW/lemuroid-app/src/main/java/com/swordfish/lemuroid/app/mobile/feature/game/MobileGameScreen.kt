@@ -225,11 +225,15 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                         onSettingsChanged = { viewModel.updateTouchControllerSettings(it) }
                     )
                     
+                    // Show the Edit Menu (Card) on top of the Overlay
+                    // DISABLED BY USER REQUEST ("Blocking Inputs")
+                    /*
                     MenuEditTouchControls(
                         viewModel = viewModel,
                         controllerConfig = currentControllerConfig,
                         touchControllerSettings = touchControllerSettings,
                     )
+                    */
                 }
             }
     

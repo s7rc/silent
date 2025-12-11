@@ -83,7 +83,10 @@ fun TouchControlsEditorOverlay(
                             
                             // 4. Drag / Scale Loop
                             // We stay in this loop until all fingers lift.
-                            val startState = if (currentActiveId != null) currentSettings.elements[currentActiveId] else null
+                            // If settings are missing (first time), default to empty so we can resolve them.
+                            val startState = if (currentActiveId != null) {
+                                currentSettings.elements[currentActiveId] ?: TouchControllerSettingsManager.ElementSettings()
+                            } else null
                             
                             if (currentActiveId != null && startState != null) {
                                 var accumulatedPan = Offset.Zero
