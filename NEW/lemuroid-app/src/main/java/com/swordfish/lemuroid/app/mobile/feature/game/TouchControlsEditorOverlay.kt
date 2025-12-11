@@ -108,7 +108,7 @@ fun TouchControlsEditorOverlay(
                                     accumulatedPan += panChange
                                     
                                     var newScale = (startState.scale * accumulatedZoom)
-                                        .coerceIn(0.5f, 2.5f) // Sane limits
+                                        .coerceIn(0.2f, 3.0f) // Wider limits (User Req)
                                     
                                     // ...
                                     val newSettings = currentSettings.copy(
