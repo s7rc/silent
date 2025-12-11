@@ -26,14 +26,16 @@ import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 fun TouchControlsEditorOverlay(
     modifier: Modifier = Modifier,
     settings: TouchControllerSettingsManager.Settings,
-    onSettingsChanged: (TouchControllerSettingsManager.Settings) -> Unit
+    onSettingsChanged: (TouchControllerSettingsManager.Settings) -> Unit,
+    onExit: () -> Unit
 ) {
     val boundsMap = LocalTouchElementBounds.current
     val currentSettings by rememberUpdatedState(settings)
     var activeId by remember { mutableStateOf<String?>(null) }
     
-    // Track our own global offset to align coordinates
+    // Track our own global offset and Exit Button bounds
     var overlayOffset by remember { mutableStateOf(Offset.Zero) }
+    var exitButtonBounds by remember { mutableStateOf(Rect.Zero) }
 
     // Helper to find ID at point (Global Coordinates)
     fun findIdAt(globalOffset: Offset): String? {
@@ -57,19 +59,17 @@ fun TouchControlsEditorOverlay(
                         
                         // If any finger is down, we must check if we should intercept
                         if (changes.any { it.pressed }) {
-                            
-                            // 2. Hit Test immediately
-                            val down = changes.first { it.pressed } // Take the first pressed pointer
-                            
-                            // Always consume to BLOCK GAME INPUT regardless of hit.
-                            // However, we consume AFTER logic in the loop below to allow calculation.
-                            // But here (initial contact), we want to consume to claim ownership?
-                            // No, if we consume here, the loop below sees consumed events.
-                            
-                            // Strategy: We loop until lift. IN the loop, we calc then consume.
-                            
-                            // 3. Coordinate Logic
+                            val down = changes.first { it.pressed }
                             val globalTouch = down.position + overlayOffset
+                            
+                            // CHECK EXIT BUTTON: If touching the button, LET IT PASS (Do not consume)
+                            // This allows the standard onClick to fire.
+                            if (exitButtonBounds.contains(globalTouch)) {
+                                continue
+                            }
+                            
+                            // ... (Rest of logic: Hit Test, Drag Loop) ...
+                            // 3. Coordinate Logic
                             var currentActiveId = findIdAt(globalTouch)
                             
                             // Fuzzy Search (Easier Grabbing)
@@ -82,8 +82,6 @@ fun TouchControlsEditorOverlay(
                             activeId = currentActiveId
                             
                             // 4. Drag / Scale Loop
-                            // We stay in this loop until all fingers lift.
-                            // If settings are missing (first time), default to empty so we can resolve them.
                             val startState = if (currentActiveId != null) {
                                 currentSettings.elements[currentActiveId] ?: TouchControllerSettingsManager.ElementSettings()
                             } else null
@@ -95,23 +93,83 @@ fun TouchControlsEditorOverlay(
                                 while (true) {
                                     val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                                     
-                                    // Check if we finished (all fingers up)
                                     if (dragEvent.changes.all { !it.pressed }) {
                                         break
                                     }
 
-                                    // A. Calculate Delta FIRST (Use unconsumed events)
+                                    // A. Calculate Delta
                                     val zoomChange = dragEvent.calculateZoom()
-                                    val panChange = dragEvent.calculatePan() // This requires unconsumed events
+                                    val panChange = dragEvent.calculatePan()
                                     
-                                    // B. CONSUME EVERYTHING IMMEDIATELY AFTER CALC
-                                    // This prevents the game from seeing the move.
+                                    // B. CONSUME
                                     dragEvent.changes.forEach { it.consume() }
                                     
                                     accumulatedZoom *= zoomChange
                                     accumulatedPan += panChange
                                     
-                                    var changed = false
+                                    var newScale = (startState.scale * accumulatedZoom)
+                                        .coerceIn(0.5f, 2.5f) // Sane limits
+                                    
+                                    // ...
+                                    val newSettings = currentSettings.copy(
+                                        elements = currentSettings.elements + (currentActiveId to startState.copy(
+                                            x = (startState.x + newXDelta).coerceIn(0f, 1f), // Normalized
+                                            y = (startState.y + newYDelta).coerceIn(0f, 1f),
+                                            scale = newScale
+                                        ))
+                                    )
+                                    onSettingsChanged(newSettings)
+                                }
+                            } else {
+                                // Block Game
+                                while (true) {
+                                     val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                     dragEvent.changes.forEach { it.consume() }
+                                     if (dragEvent.changes.all { !it.pressed }) {
+                                         break
+                                     }
+                                }
+                            }
+                            activeId = null
+                        }
+                    }
+                }
+            }
+    ) {
+        // VISUALS
+        // ... (Existing DrawRect logic for selection) ...
+        androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
+            activeId?.let { id ->
+                boundsMap[id]?.let { rect ->
+                    // Draw Selection Box relative to Overlay
+                    val localTopLeft = rect.topLeft - overlayOffset
+                    drawRect(
+                        color = androidx.compose.ui.graphics.Color.Green,
+                        topLeft = localTopLeft,
+                        size = androidx.compose.ui.geometry.Size(rect.width, rect.height),
+                        style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.dp.toPx())
+                    )
+                }
+            }
+        }
+        
+        // EXIT BUTTON
+        androidx.compose.material3.ExtendedFloatingActionButton(
+            onClick = onExit,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+                .onGloballyPositioned { exitButtonBounds = it.boundsInRoot() },
+            icon = { 
+                androidx.compose.material3.Icon(
+                    androidx.compose.material.icons.Icons.Default.Check, 
+                    contentDescription = "Done"
+                ) 
+            },
+            text = { androidx.compose.material3.Text(text = "Done") }
+        )
+    }
+}hanged = false
                                     val newScale = (startState.scale * accumulatedZoom).coerceIn(0.5f, 2.5f)
                                     if (newScale != startState.scale) changed = true
                                     

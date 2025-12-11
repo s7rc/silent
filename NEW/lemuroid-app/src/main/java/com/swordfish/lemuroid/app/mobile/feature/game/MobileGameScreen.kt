@@ -222,7 +222,8 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                     TouchControlsEditorOverlay(
                         modifier = Modifier.fillMaxSize(),
                         settings = touchControllerSettings,
-                        onSettingsChanged = { viewModel.updateTouchControllerSettings(it) }
+                        onSettingsChanged = { viewModel.updateTouchControllerSettings(it) },
+                        onExit = { viewModel.showEditControls(false) }
                     )
                     
                     // Show the Edit Menu (Card) on top of the Overlay
