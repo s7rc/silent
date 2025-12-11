@@ -2,7 +2,7 @@ package com.swordfish.lemuroid.lib.controller
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.swordfish.touchinput.controller.R
+
 import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -63,28 +63,28 @@ class TouchControllerSettingsManager(
                 scale =
                     indexToFloat(
                         sharedPreferences.getInt(
-                            getPreferenceString(R.string.pref_key_virtual_pad_scale, orientation),
+                            "virtual_pad_scale_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_SCALE),
                         ),
                     ),
                 rotation =
                     indexToFloat(
                         sharedPreferences.getInt(
-                            getPreferenceString(R.string.pref_key_virtual_pad_rotation, orientation),
+                            "virtual_pad_rotation_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_ROTATION),
                         ),
                     ),
                 marginX =
                     indexToFloat(
                         sharedPreferences.getInt(
-                            getPreferenceString(R.string.pref_key_virtual_pad_margin_x, orientation),
+                            "virtual_pad_margin_x_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_MARGIN_X),
                         ),
                     ),
                 marginY =
                     indexToFloat(
                         sharedPreferences.getInt(
-                            getPreferenceString(R.string.pref_key_virtual_pad_margin_y, orientation),
+                            "virtual_pad_margin_y_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_MARGIN_Y),
                         ),
                     ),
@@ -100,19 +100,19 @@ class TouchControllerSettingsManager(
                 floatToIndex(settings.opacity),
             )
             editor.putInt(
-                getPreferenceString(R.string.pref_key_virtual_pad_scale, orientation),
+                "virtual_pad_scale_${controllerID}_${orientation.ordinal}",
                 floatToIndex(settings.scale),
             )
             editor.putInt(
-                getPreferenceString(R.string.pref_key_virtual_pad_rotation, orientation),
+                "virtual_pad_rotation_${controllerID}_${orientation.ordinal}",
                 floatToIndex(settings.rotation),
             )
             editor.putInt(
-                getPreferenceString(R.string.pref_key_virtual_pad_margin_x, orientation),
+                "virtual_pad_margin_x_${controllerID}_${orientation.ordinal}",
                 floatToIndex(settings.marginX),
             )
             editor.putInt(
-                getPreferenceString(R.string.pref_key_virtual_pad_margin_y, orientation),
+                "virtual_pad_margin_y_${controllerID}_${orientation.ordinal}",
                 floatToIndex(settings.marginY),
             )
             editor.apply()
@@ -127,12 +127,7 @@ class TouchControllerSettingsManager(
 
     private fun floatToIndex(value: Float): Int = (value * 100).roundToInt()
 
-    private fun getPreferenceString(
-        preferenceStringId: Int,
-        orientation: Orientation,
-    ): String {
-        return "${context.getString(preferenceStringId)}_${controllerID}_${orientation.ordinal}"
-    }
+
 
     /* Element Settings (Per-Button) Support */
 
