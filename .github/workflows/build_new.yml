@@ -2,7 +2,7 @@ name: Build New Android Debug APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, worse ]
   pull_request:
     branches: [ main, master ]
 
