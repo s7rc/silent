@@ -6,12 +6,12 @@ import androidx.compose.ui.graphics.DefaultShadowColor
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-class LemuroidPadTheme {
+class LemuroidPadTheme(private val opacityMultiplier: Float = 1.0f) {
     private fun gray(
         luminosity: Float,
         opacity: Float,
     ): Color {
-        return Color(luminosity, luminosity, luminosity, opacity)
+        return Color(luminosity, luminosity, luminosity, opacity * opacityMultiplier)
     }
 
     val foregroundPadding: Dp = 8.dp
@@ -22,21 +22,21 @@ class LemuroidPadTheme {
 
     private val level3Fill = gray(1.0f, 0.50f)
     private val level3FillPressed = gray(0.0f, 0.50f)
-    val level3Shadow = DefaultShadowColor.copy(0.05f)
+    val level3Shadow = DefaultShadowColor.copy(0.05f * opacityMultiplier)
     val level3ShadowWidth = 4.dp
 
     private val level2Fill = gray(1.0f, 0.125f)
     private val level2FillPressed = gray(0.0f, 0.125f)
-    val level2Shadow = DefaultShadowColor.copy(0.05f)
+    val level2Shadow = DefaultShadowColor.copy(0.05f * opacityMultiplier)
     val level2ShadowWidth = 4.dp
 
     val level1Fill = gray(1.0f, 0.10f)
-    val level1Shadow = DefaultShadowColor.copy(0.10f)
+    val level1Shadow = DefaultShadowColor.copy(0.10f * opacityMultiplier)
     val level1ShadowWidth = 4.dp
 
     val level0CornerRadius = 0.dp
     val level0Fill = gray(1.0f, 0.05f)
-    val level0Shadow = DefaultShadowColor.copy(0.10f)
+    val level0Shadow = DefaultShadowColor.copy(0.10f * opacityMultiplier)
     val level0ShadowWidth = 2.dp
 
     fun compositeFill(pressed: Boolean): Color {

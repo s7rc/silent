@@ -20,6 +20,7 @@ class TouchControllerSettingsManager(
     }
 
     data class Settings(
+        val opacity: Float = DEFAULT_OPACITY,
         val scale: Float = DEFAULT_SCALE,
         val rotation: Float = DEFAULT_ROTATION,
         val marginX: Float = DEFAULT_MARGIN_X,
@@ -52,6 +53,13 @@ class TouchControllerSettingsManager(
             val elements = elementIds.associateWith { retrieveElementSettings(it) }
 
             Settings(
+                opacity =
+                    indexToFloat(
+                        sharedPreferences.getInt(
+                            getPreferenceString(R.string.pref_key_virtual_pad_opacity, orientation),
+                            floatToIndex(DEFAULT_OPACITY),
+                        ),
+                    ),
                 scale =
                     indexToFloat(
                         sharedPreferences.getInt(
@@ -87,6 +95,10 @@ class TouchControllerSettingsManager(
     suspend fun storeSettings(settings: Settings): Unit =
         withContext(Dispatchers.IO) {
             val editor = sharedPreferences.get().edit()
+            editor.putInt(
+                getPreferenceString(R.string.pref_key_virtual_pad_opacity, orientation),
+                floatToIndex(settings.opacity),
+            )
             editor.putInt(
                 getPreferenceString(R.string.pref_key_virtual_pad_scale, orientation),
                 floatToIndex(settings.scale),
@@ -168,6 +180,7 @@ class TouchControllerSettingsManager(
     }
 
     companion object {
+        const val DEFAULT_OPACITY = 1.0f
         const val DEFAULT_SCALE = 0.5f
         const val DEFAULT_ROTATION = 0.0f
         const val DEFAULT_MARGIN_X = 0.0f
