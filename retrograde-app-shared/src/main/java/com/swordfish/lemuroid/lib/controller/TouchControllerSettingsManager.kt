@@ -28,8 +28,6 @@ class TouchControllerSettingsManager(
         val elements: Map<String, ElementSettings> = emptyMap(),
     ) : java.io.Serializable
 
-    /* ... */
-
     data class ElementSettings(
         val x: Float = 0f,
         val y: Float = 0f,
@@ -38,52 +36,41 @@ class TouchControllerSettingsManager(
 
     suspend fun retrieveSettings(elementIds: Set<String> = emptySet()): Settings =
         withContext(Dispatchers.IO) {
-            val sharedPreferences = sharedPreferences.get()
-            val elementSettings = elementIds.associateWith { id ->
-                 retrieveElementSettings(id) // helper we added earlier should work here if it uses SP
-                 // Wait, retrieveElementSettings created new SP access.
-                 // Optimization: reuse SP instance.
-                 // But helper is suspend. 
-                 // I'll inline the logic or rely on helper. Helper reads SP again. It's fine for now (IO dispatcher).
-                 // Actually I can call retrieveElementSettings(id) directly.
-                 // BUT I need to make sure I am not inside another coroutine that blocks?
-                 // `withContext` is fine.
-            }
-            // Actually reusing logic:
+            val sp = sharedPreferences.get()
             val elements = elementIds.associateWith { retrieveElementSettings(it) }
 
             Settings(
                 opacity =
                     indexToFloat(
-                        sharedPreferences.getInt(
+                        sp.getInt(
                             "virtual_pad_opacity_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_OPACITY),
                         ),
                     ),
                 scale =
                     indexToFloat(
-                        sharedPreferences.getInt(
+                        sp.getInt(
                             "virtual_pad_scale_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_SCALE),
                         ),
                     ),
                 rotation =
                     indexToFloat(
-                        sharedPreferences.getInt(
+                        sp.getInt(
                             "virtual_pad_rotation_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_ROTATION),
                         ),
                     ),
                 marginX =
                     indexToFloat(
-                        sharedPreferences.getInt(
+                        sp.getInt(
                             "virtual_pad_margin_x_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_MARGIN_X),
                         ),
                     ),
                 marginY =
                     indexToFloat(
-                        sharedPreferences.getInt(
+                        sp.getInt(
                             "virtual_pad_margin_y_${controllerID}_${orientation.ordinal}",
                             floatToIndex(DEFAULT_MARGIN_Y),
                         ),
@@ -117,25 +104,10 @@ class TouchControllerSettingsManager(
             )
             editor.apply()
             
-            // Store elements
             settings.elements.forEach { (id, elementSettings) ->
                 storeElementSettings(id, elementSettings)
             }
         }
-
-    private fun indexToFloat(index: Int): Float = index / 100f
-
-    private fun floatToIndex(value: Float): Int = (value * 100).roundToInt()
-
-
-
-    /* Element Settings (Per-Button) Support */
-
-    data class ElementSettings(
-        val x: Float = 0f,
-        val y: Float = 0f,
-        val scale: Float = 1f,
-    )
 
     suspend fun retrieveElementSettings(elementId: String): ElementSettings =
         withContext(Dispatchers.IO) {
@@ -174,14 +146,16 @@ class TouchControllerSettingsManager(
         return "element_${elementId}_${property}_${controllerID}_${orientation.ordinal}"
     }
 
+    private fun indexToFloat(index: Int): Float = index / 100f
+
+    private fun floatToIndex(value: Float): Int = (value * 100).roundToInt()
+
     companion object {
         const val DEFAULT_OPACITY = 1.0f
         const val DEFAULT_SCALE = 0.5f
         const val DEFAULT_ROTATION = 0.0f
         const val DEFAULT_MARGIN_X = 0.0f
         const val DEFAULT_MARGIN_Y = 0.0f
-
-        // I'll use 0f as default for offset.
         
         const val DEFAULT_ELEMENT_SCALE = 1.0f 
         const val DEFAULT_ELEMENT_X = -1.0f
