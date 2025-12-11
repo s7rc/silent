@@ -17,7 +17,9 @@ import com.swordfish.lemuroid.lib.storage.RomFiles
 import com.swordfish.lemuroid.lib.storage.StorageFile
 import com.swordfish.lemuroid.lib.storage.StorageProvider
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import timber.log.Timber
 import java.io.File
@@ -35,20 +37,31 @@ class StorageAccessFrameworkProvider(private val context: Context) : StorageProv
 
     override val enabledByDefault = true
 
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
     override fun listBaseStorageFiles(): Flow<List<BaseStorageFile>> {
-        return getExternalFolder()?.let { folder ->
+        val folders = getExternalFolders()
+        if (folders.isEmpty()) return emptyFlow()
+
+        return folders.asFlow().flatMapMerge { folder ->
             traverseDirectoryEntries(Uri.parse(folder))
-        } ?: emptyFlow()
+        }
     }
 
     override fun getStorageFile(baseStorageFile: BaseStorageFile): StorageFile? {
         return DocumentFileParser.parseDocumentFile(context, baseStorageFile)
     }
 
-    private fun getExternalFolder(): String? {
-        val prefString = context.getString(R.string.pref_key_extenral_folder)
-        val preferenceManager = SharedPreferencesHelper.getLegacySharedPreferences(context)
-        return preferenceManager.getString(prefString, null)
+    private fun getExternalFolders(): Set<String> {
+        val prefs = SharedPreferencesHelper.getLegacySharedPreferences(context)
+        val legacyKey = context.getString(R.string.pref_key_extenral_folder)
+        val collectionKey = context.getString(R.string.pref_key_external_folders)
+
+        val set = prefs.getStringSet(collectionKey, null)
+        if (!set.isNullOrEmpty()) return set
+
+        // Fallback to legacy single folder
+        val single = prefs.getString(legacyKey, null)
+        return if (single != null) setOf(single) else emptySet()
     }
 
     private fun traverseDirectoryEntries(rootUri: Uri): Flow<List<BaseStorageFile>> =

@@ -51,16 +51,33 @@ class StorageFrameworkPickerLauncher : RetrogradeActivity() {
 
         if (requestCode == REQUEST_CODE_PICK_FOLDER && resultCode == Activity.RESULT_OK) {
             val sharedPreferences = SharedPreferencesHelper.getLegacySharedPreferences(this)
-            val preferenceKey = getString(com.swordfish.lemuroid.lib.R.string.pref_key_extenral_folder)
+            val legacyKey = getString(com.swordfish.lemuroid.lib.R.string.pref_key_extenral_folder)
+            val collectionKey = getString(com.swordfish.lemuroid.lib.R.string.pref_key_external_folders)
 
-            val currentValue: String? = sharedPreferences.getString(preferenceKey, null)
             val newValue = resultData?.data
 
-            if (newValue != null && newValue.toString() != currentValue) {
+            if (newValue != null) {
+                // 1. Grant Permission (Non-Destructive)
                 updatePersistableUris(newValue)
 
+                // 2. Update Set (Accumulate URIs)
+                val existingSet = sharedPreferences.getStringSet(collectionKey, mutableSetOf())?.toMutableSet() ?: mutableSetOf()
+                
+                // Migration: If set is empty, check legacy logic to preserve existing folder
+                if (existingSet.isEmpty()) {
+                    val legacyValue = sharedPreferences.getString(legacyKey, null)
+                    if (legacyValue != null) {
+                        existingSet.add(legacyValue)
+                    }
+                }
+                
+                // Add new selection
+                existingSet.add(newValue.toString())
+
                 sharedPreferences.edit().apply {
-                    this.putString(preferenceKey, newValue.toString())
+                    this.putStringSet(collectionKey, existingSet)
+                    // Keep legacy key updated with latest for backward compat if needed
+                    this.putString(legacyKey, newValue.toString())
                     this.apply()
                 }
             }
@@ -71,16 +88,7 @@ class StorageFrameworkPickerLauncher : RetrogradeActivity() {
     }
 
     private fun updatePersistableUris(uri: Uri) {
-        contentResolver.persistedUriPermissions
-            .filter { it.isReadPermission }
-            .filter { it.uri != uri }
-            .forEach {
-                contentResolver.releasePersistableUriPermission(
-                    it.uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
-                )
-            }
-
+        // We now support multiple directories, so we do NOT revoke old permissions.
         contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
