@@ -25,7 +25,15 @@ class TouchControllerSettingsManager(
         val marginX: Float = DEFAULT_MARGIN_X,
         val marginY: Float = DEFAULT_MARGIN_Y,
         val elements: Map<String, ElementSettings> = emptyMap(),
-    )
+    ) : java.io.Serializable
+
+    /* ... */
+
+    data class ElementSettings(
+        val x: Float = 0f,
+        val y: Float = 0f,
+        val scale: Float = 1f,
+    ) : java.io.Serializable
 
     suspend fun retrieveSettings(elementIds: Set<String> = emptySet()): Settings =
         withContext(Dispatchers.IO) {

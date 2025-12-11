@@ -82,6 +82,7 @@ class GameMenuActivity : RetrogradeComponentActivity() {
         val currentDisk: Int,
         val currentTiltConfiguration: TiltConfiguration,
         val allTiltConfigurations: List<TiltConfiguration>,
+        val touchSettings: TouchControllerSettingsManager.Settings?,
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -127,6 +128,7 @@ class GameMenuActivity : RetrogradeComponentActivity() {
                     intent.serializable<Array<TiltConfiguration>>(GameMenuContract.EXTRA_TILT_ALL_CONFIGS)
                         ?.toList()
                         ?: emptyList(),
+                touchSettings = intent.serializable(GameMenuContract.EXTRA_TOUCH_SETTINGS),
             )
 
         setContent {
@@ -224,6 +226,12 @@ class GameMenuActivity : RetrogradeComponentActivity() {
                                 factory = GameMenuCoreOptionsViewModel.Factory(inputDeviceManager),
                             ),
                             gameMenuRequest,
+                        )
+                    }
+                    composable(GameMenuRoute.LAYOUT) {
+                        GameMenuLayoutScreen(
+                            touchSettings = gameMenuRequest.touchSettings,
+                            onResult = ::onResult,
                         )
                     }
                 }

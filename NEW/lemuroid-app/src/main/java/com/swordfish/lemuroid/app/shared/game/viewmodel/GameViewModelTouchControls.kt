@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -49,6 +50,8 @@ class GameViewModelTouchControls(
     private val menuPressed = MutableStateFlow(false)
     private val showEditControls = MutableStateFlow(false)
     private val hapticFeedbackMode = MutableStateFlow(HapticFeedbackMode.NONE)
+
+    private var currentSettings: TouchControllerSettingsManager.Settings? = null
 
     private var loadingMenuJob: Job? = null
 
@@ -76,7 +79,10 @@ class GameViewModelTouchControls(
             .flatMapLatest { (touchControlId, orientation) ->
                 touchControllerSettingsManager.observeSettings(touchControlId, orientation, density, insets)
             }
+            .onEach { currentSettings = it }
     }
+
+    fun getCurrentSettings(): TouchControllerSettingsManager.Settings? = currentSettings
 
     fun getTouchHapticFeedbackMode(): Flow<HapticFeedbackMode> {
         return hapticFeedbackMode

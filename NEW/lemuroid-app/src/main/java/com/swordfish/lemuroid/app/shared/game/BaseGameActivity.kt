@@ -39,6 +39,7 @@ import com.swordfish.lemuroid.lib.saves.SavesManager
 import com.swordfish.lemuroid.lib.saves.StatesManager
 import com.swordfish.lemuroid.lib.saves.StatesPreviewManager
 import com.swordfish.touchinput.radial.sensors.TiltConfiguration
+import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 import dagger.Lazy
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -216,6 +217,7 @@ abstract class BaseGameActivity : ImmersiveActivity() {
                 this.putExtra(GameMenuContract.EXTRA_CURRENT_TILT_CONFIG, currentTiltConfiguration)
                 // TODO PADS... Make sure to avoid passing this if a physical pad is connected.
                 this.putExtra(GameMenuContract.EXTRA_TILT_ALL_CONFIGS, tiltConfigurations.toTypedArray())
+                this.putExtra(GameMenuContract.EXTRA_TOUCH_SETTINGS, baseGameScreenViewModel.getCurrentTouchSettings())
             }
         startActivityForResult(intent, DIALOG_REQUEST)
         overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
@@ -391,6 +393,10 @@ abstract class BaseGameActivity : ImmersiveActivity() {
             }
             if (data?.getBooleanExtra(GameMenuContract.RESULT_EDIT_TOUCH_CONTROLS, false) == true) {
                 baseGameScreenViewModel.showEditControls(true)
+            }
+            if (data?.hasExtra(GameMenuContract.RESULT_UPDATE_TOUCH_SETTINGS) == true) {
+                val settings = data.serializable<TouchControllerSettingsManager.Settings>(GameMenuContract.RESULT_UPDATE_TOUCH_SETTINGS)
+                settings?.let { baseGameScreenViewModel.updateTouchControllerSettings(it) }
             }
             if (data?.hasExtra(GameMenuContract.RESULT_CHANGE_TILT_CONFIG) == true) {
                 val tiltConfig = data.serializable<TiltConfiguration>(GameMenuContract.RESULT_CHANGE_TILT_CONFIG)
