@@ -175,7 +175,7 @@ fun MobileGameScreen(viewModel: BaseGameScreenViewModel) {
                                 touchControlsVisibleState.value
 
                         if (isVisible) {
-                            CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme(touchControllerSettings.opacity)) {
+                            CompositionLocalProvider(LocalLemuroidPadTheme provides LemuroidPadTheme(touchControllerSettings?.opacity ?: 1.0f)) {
                                 if (!isLandscape) {
                                     PadContainer(
                                         modifier = Modifier.layoutId(GameScreenLayout.CONSTRAINTS_BOTTOM_CONTAINER),
