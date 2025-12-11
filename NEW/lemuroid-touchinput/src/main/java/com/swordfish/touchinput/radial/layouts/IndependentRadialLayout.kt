@@ -48,7 +48,7 @@ private class IndependentSecondaryDialsScope(
     }
 
     override fun Modifier.radialScale(scale: Float): Modifier {
-         return this
+         return this.androidx.compose.ui.draw.scale(scale)
     }
 }
 
