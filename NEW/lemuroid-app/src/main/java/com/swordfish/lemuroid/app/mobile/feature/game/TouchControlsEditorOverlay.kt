@@ -90,16 +90,20 @@ fun TouchControlsEditorOverlay(
                                 if (startState != null) {
                                     while (true) {
                                         val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
-                                        // CONSUME EVERYTHING
-                                        dragEvent.changes.forEach { it.consume() }
+                                    while (true) {
+                                        val dragEvent = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                                         
                                         // Check if we finished
                                         if (dragEvent.changes.all { !it.pressed }) {
                                             break
                                         }
 
+                                        // 1. Calculate Delta FIRST (while event is unconsumed)
                                         val zoomChange = dragEvent.calculateZoom()
                                         val panChange = dragEvent.calculatePan()
+                                        
+                                        // 2. CONSUME EVERYTHING (to block game)
+                                        dragEvent.changes.forEach { it.consume() }
                                         
                                         accumulatedZoom *= zoomChange
                                         accumulatedPan += panChange
