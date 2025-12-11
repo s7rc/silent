@@ -18,7 +18,7 @@ import com.swordfish.lemuroid.R
 import com.swordfish.lemuroid.app.shared.GameMenuContract
 import com.swordfish.lemuroid.app.utils.android.settings.LemuroidSettingsMenuLink
 import com.swordfish.lemuroid.app.utils.android.settings.LemuroidSettingsSlider
-import com.swordfish.lemuroid.lib.controller.TouchControllerSettingsManager
+import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager
 import com.swordfish.touchinput.radial.settings.TouchControllerSettingsManager.Companion.DEFAULT_SCALE
 import kotlin.math.roundToInt
 import kotlin.reflect.KFunction1
